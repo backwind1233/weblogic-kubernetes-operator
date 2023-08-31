@@ -26,20 +26,6 @@
 script="${BASH_SOURCE[0]}"
 scriptDir="$(cd "$(dirname "${script}")" && pwd)"
 
-source ${scriptDir}/../common/utility.sh
-source ${scriptDir}/../common/validate.sh
-
-usage() {
-  echo usage: ${script} -i file -o dir [-u uid] [-e] [-d] [-h]
-  echo "  -i Parameter inputs file, must be specified."
-  echo "  -o Output directory for the generated yaml files, must be specified."
-  echo "  -u UID of resource, used to name file share, persistent valume, and persistent valume claim. "
-  echo "  -e Also create the Azure Kubernetes Service and create WebLogic Server domain on it using the generated yaml files"
-  echo "  -d Paramters inputs file for creating domain, you can use specifed configuration by changing values of kubernetes/samples/scripts/create-weblogic-domain/domain-home-on-pv/create-domain-inputs.yaml, otherwise, we will use that file by default."
-  echo "  -h Help"
-  exit $1
-}
-
 #
 # Parse the command line options
 #
@@ -122,47 +108,8 @@ initOutputDir() {
 #
 initialize() {
 
-  # Validate the required files exist
-  validateErrors=false
-
-  if [ -z "${valuesInputFile}" ]; then
-    validationError "You must use the -i option to specify the name of the inputs parameter file (a modified copy of kubernetes/samples/scripts/create-weblogic-domain-on-aks/create-domain-on-aks-inputs.yaml)."
-  else
-    if [ ! -f ${valuesInputFile} ]; then
-      validationError "Unable to locate the input parameters file ${valuesInputFile}"
-    fi
-  fi
-
-  if [ -z "${outputDir}" ]; then
-    validationError "You must use the -o option to specify the name of an existing directory to store the generated yaml files in."
-  fi
-
-  storageClassInput="${scriptDir}/azure-csi-storageaccount-template.yaml"
-  if [ ! -f ${storageClassInput} ]; then
-    validationError "The template file ${storageClassInput} for generating a NFS storage class was not found"
-  fi
-
-  domainPVCInput="${scriptDir}/azure-file-pvc-template.yaml"
-  if [ ! -f ${domainPVCInput} ]; then
-    validationError "The template file ${domainPVCInput} for generating a persistent volume claim was not found"
-  fi
-
-  wlsLbInput="${scriptDir}/loadbalancer-template.yaml"
-  if [ ! -f ${wlsLbInput} ]; then
-    validationError "The template file ${wlsLbInput} for generating load balancer for Administration Server was not found"
-  fi
-
-  failIfValidationErrors
-
-  # Parse the common inputs file
-  parseCommonInputs
-  initOutputDir
-  failIfValidationErrors
-
-  if [ ${#namePrefix} -gt 7 ]; then
-    fail "namePrefix is allowed lowercase letters and numbers, between 1 and 7 characters."
-  fi
-
+  source ./create-domain-on-aks-input.sh
+  
   # Generate Azure resource name
   export azureResourceGroupName="${namePrefix}resourcegroup${azureResourceUID}"
   export aksClusterName="${namePrefix}akscluster${azureResourceUID}"
@@ -176,100 +123,6 @@ initialize() {
   export persistentVolumeId="${namePrefix}-${persistentVolumeClaimNameSuffix}-${azureResourceUID}"
 }
 
-#
-# Function to generate the yaml files for creating Azure resources and WebLogic Server domain
-#
-createYamlFiles() {
-
-  # Create a directory for this domain's output files
-  mkdir -p ${aksOutputDir}
-
-  # Make sure the output directory has a copy of the inputs file.
-  # The user can either pre-create the output directory, put the inputs
-  # file there, and create the domain from it, or the user can put the
-  # inputs file some place else and let this script create the output directory
-  # (if needed) and copy the inputs file there.
-  copyInputsFileToOutputDirectory ${valuesInputFile} "${aksOutputDir}/create-domain-on-aks-inputs.yaml"
-
-  echo Generating ${scOutput}
-
-  cp ${storageClassInput} ${scOutput}  
-  sed -i -e "s:%STORAGE_CLASS_NAME%:${azureFileCsiNfsClassName}:g" ${scOutput}
-  sed -i -e "s:%AZURE_FILE_SHARE_NAME%:${azureStorageShareName}:g" ${scOutput}
-  sed -i -e "s:%STORAGE_ACCOUNT_RESOURCE_GROUP_NAME%:${azureResourceGroupName}:g" ${scOutput}
-  sed -i -e "s:%STORAGE_ACCOUNT_NAME%:${storageAccountName}:g" ${scOutput}
-
-  # Generate the yaml to create the persistent volume claim
-  echo Generating ${pvcOutput}
-
-  cp ${domainPVCInput} ${pvcOutput}
-  sed -i -e "s:%PERSISTENT_VOLUME_CLAIM_NAME%:${persistentVolumeClaimName}:g" ${pvcOutput}
-  sed -i -e "s:%STORAGE_CLASS_NAME%:${azureFileCsiNfsClassName}:g" ${pvcOutput}
-
-  # Generate the yaml to create WebLogic Server domain.
-  echo Generating ${domain1Output}
-
-  if [ -z ${domainInputFile} ]; then
-    domainInputFile="${dirCreateDomain}/create-domain-inputs.yaml"
-  fi
-
-  cp ${domainInputFile} ${domain1Output}
-  sed -i -e "s;^image\:.*;image\: ${weblogicDockerImage};g" ${domain1Output}
-  sed -i -e "s:#imagePullSecretName.*:imagePullSecretName\: ${imagePullSecretName}:g" ${domain1Output}
-  sed -i -e "s:imagePullSecretName.*:imagePullSecretName\: ${imagePullSecretName}:g" ${domain1Output}
-  sed -i -e "s:exposeAdminNodePort.*:exposeAdminNodePort\: true:g" ${domain1Output}
-  sed -i -e "s:persistentVolumeClaimName.*:persistentVolumeClaimName\: ${persistentVolumeClaimName}:g" ${domain1Output}
-  sed -i -e "s:serverPodMemoryRequest.*:serverPodMemoryRequest\: ${serverPodMemoryRequest}:g" ${domain1Output}
-  sed -i -e "s:serverPodCpuRequest.*:serverPodCpuRequest\: ${serverPodCpuRequest}:g" ${domain1Output}
-  sed -i -e "s:serverPodMemoryLimit.*:serverPodMemoryLimit\: ${serverPodMemoryLimit}:g" ${domain1Output}
-  sed -i -e "s:serverPodCpuLimit.*:serverPodCpuLimit\: ${serverPodCpuLimit}:g" ${domain1Output}
-  sed -i -e "s;^javaOptions.*;javaOptions\: \"${javaOptions}\";g" ${domain1Output}
-
-  # Parse domain configuration yaml for usage in load balancer
-  exportValuesFile=$(mktemp /tmp/export-values-XXXXXXXXX.sh)
-  tmpFile=$(mktemp /tmp/javaoptions_tmp-XXXXXXXXX.dat)
-  parseYaml ${domain1Output} ${exportValuesFile}
-  if [ ! -f ${exportValuesFile} ]; then
-    echo Unable to locate the parsed output of ${domain1Output}.
-    fail 'The file ${exportValuesFile} could not be found.'
-  fi
-
-  # Define the environment variables that will be used to fill in template values
-  echo Domain parameters being used
-  cat ${exportValuesFile}
-  echo
-  # javaOptions may contain tokens that are not allowed in export command
-  # we need to handle it differently.
-  # we set the javaOptions variable that can be used later
-  tmpStr=$(grep "javaOptions" ${exportValuesFile})
-  javaOptions=${tmpStr//"javaOptions="/}
-
-  # We exclude javaOptions from the exportValuesFile
-  grep -v "javaOptions" ${exportValuesFile} >${tmpFile}
-  source ${tmpFile}
-  rm ${exportValuesFile} ${tmpFile}
-
-  # Generate the yaml to create load balancer for Administration Server.
-  echo Generating ${adminLbOutput}
-
-  cp ${wlsLbInput} ${adminLbOutput}
-  sed -i -e "s:%SELECTOR_SERVER_TYPE%:${selectorAdminServerName}:g" ${adminLbOutput}
-  sed -i -e "s:%DOMAIN_UID%:${domainUID}:g" ${adminLbOutput}
-  sed -i -e "s:%SERVER_PORT%:${adminPort}:g" ${adminLbOutput}
-  sed -i -e "s:%SERVER_NAME%:${adminServerName}:g" ${adminLbOutput}
-
-  # Generate the yaml to create load balancer for WebLogic Server cluster.
-  echo Generating ${clusterLbOutput}
-
-  cp ${wlsLbInput} ${clusterLbOutput}
-  sed -i -e "s:%SELECTOR_SERVER_TYPE%:${selectorClusterServerName}:g" ${clusterLbOutput}
-  sed -i -e "s:%DOMAIN_UID%:${domainUID}:g" ${clusterLbOutput}
-  sed -i -e "s:%SERVER_PORT%:${managedServerPort}:g" ${clusterLbOutput}
-  sed -i -e "s:%SERVER_NAME%:${clusterName}:g" ${clusterLbOutput}
-
-  # Remove any "...yaml-e" files left over from running sed
-  rm -f ${aksOutputDir}/*.yaml-e
-}
 
 createResourceGroup() {
   az extension add --name resource-graph
@@ -428,10 +281,273 @@ createWebLogicDomain() {
 
   # Create WebLogic Server Domain
   echo Creating WebLogic Server domain ${domainUID}
-  bash ${dirCreateDomain}/create-domain.sh -i $domain1Output -o ${outputDir} -e -v
+
+  buildandrunimage  
 
   ${KUBERNETES_CLI:-kubectl} apply -f ${adminLbOutput}
   ${KUBERNETES_CLI:-kubectl} apply -f ${clusterLbOutput}
+}
+
+buildandrunimage(){
+export ORACLE_USERNAME=oracle.ufgc5@aleeas.com
+export ORACLE_PASSWORD=
+
+export TIMESTAMP=$(date +%s)
+export NAME_PREFIX=wls
+export ACR_NAME=domainonpvaks${TIMESTAMP}
+export BASE_DIR="/tmp/tmp${TIMESTAMP}"
+export BRANCH_NAME="v4.1.0"
+
+export SECRET_NAME_DOCKER="${NAME_PREFIX}regcred"
+export WEBLOGIC_USERNAME="weblogic"
+export WEBLOGIC_PASSWORD="Secret123456"
+
+az extension add --name resource-graph
+
+mkdir ${BASE_DIR}
+
+## Build and push Image
+az acr create --resource-group $azureResourceGroupName \
+  --name ${ACR_NAME} \
+  --sku Standard
+
+az acr update -n ${ACR_NAME} --admin-enabled true
+
+export LOGIN_SERVER=$(az acr show -n $ACR_NAME --query 'loginServer' -o tsv)
+echo $LOGIN_SERVER
+export USER_NAME=$(az acr credential show -n $ACR_NAME --query 'username' -o tsv)
+echo $USER_NAME
+export PASSWORD=$(az acr credential show -n $ACR_NAME --query 'passwords[0].value' -o tsv)
+echo $PASSWORD
+sudo docker login $LOGIN_SERVER -u $USER_NAME -p $PASSWORD
+
+# public access
+az acr update --name $ACR_NAME --anonymous-pull-enabled
+
+## need az acr login in order to push
+az acr login --name $ACR_NAME
+
+cd ${BASE_DIR}
+git clone --branch ${BRANCH_NAME} https://github.com/oracle/weblogic-kubernetes-operator.git
+mkdir -p ${BASE_DIR}/sample
+cp -r ${BASE_DIR}/weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain/domain-on-pv/* ${BASE_DIR}/sample
+
+mkdir -p ${BASE_DIR}/sample/wdt-artifacts
+
+cp -r ${BASE_DIR}/weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain/wdt-artifacts/* ${BASE_DIR}/sample/wdt-artifacts
+
+cd ${BASE_DIR}/sample/wdt-artifacts
+
+curl -m 120 -fL https://github.com/oracle/weblogic-deploy-tooling/releases/latest/download/weblogic-deploy.zip \
+  -o ${BASE_DIR}/sample/wdt-artifacts/weblogic-deploy.zip
+
+curl -m 120 -fL https://github.com/oracle/weblogic-image-tool/releases/latest/download/imagetool.zip \
+  -o ${BASE_DIR}/sample/wdt-artifacts/imagetool.zip
+
+cd ${BASE_DIR}/sample/wdt-artifacts
+
+unzip imagetool.zip
+
+./imagetool/bin/imagetool.sh cache deleteEntry --key wdt_latest
+
+./imagetool/bin/imagetool.sh cache addInstaller \
+  --type wdt \
+  --version latest \
+  --path ${BASE_DIR}/sample/wdt-artifacts/weblogic-deploy.zip
+
+unzip ${BASE_DIR}/sample/wdt-artifacts/weblogic-deploy.zip
+
+rm -f ${BASE_DIR}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip
+
+cd ${BASE_DIR}/sample/wdt-artifacts/archives/archive-v1
+
+${BASE_DIR}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.sh add application -archive_file=${BASE_DIR}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip -source=wlsdeploy/applications/myapp-v1
+
+cd ${BASE_DIR}/sample/wdt-artifacts/wdt-model-files/WLS-v1
+
+# --tag wlsgzhcontainer.azurecr.io/wdt-domain-image:WLS-v1 \
+${BASE_DIR}/sample/wdt-artifacts/imagetool/bin/imagetool.sh createAuxImage \
+  --tag ${ACR_NAME}.azurecr.io/wdt-domain-image:WLS-v1 \
+  --wdtModel ./model.10.yaml \
+  --wdtVariables ./model.10.properties \
+  --wdtArchive ./archive.zip
+
+docker push ${ACR_NAME}.azurecr.io/wdt-domain-image:WLS-v1
+
+
+
+## 构建
+cd ${BASE_DIR}
+cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain-credentials
+./create-weblogic-credentials.sh -u ${WEBLOGIC_USERNAME} -p ${WEBLOGIC_PASSWORD} -d domain1
+
+cd ${BASE_DIR}
+cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-kubernetes-secrets
+./create-docker-credentials-secret.sh -s ${SECRET_NAME_DOCKER} -e ${ORACLE_USERNAME} -p ${ORACLE_PASSWORD} -u ${ORACLE_USERNAME}
+
+
+cat >domain-resource.yaml <<EOF
+# Copyright (c) 2023, Oracle and/or its affiliates.
+# Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
+#
+# This is an example of how to define a Domain resource.
+#
+apiVersion: "weblogic.oracle/v9"
+kind: Domain
+metadata:
+  name: domain1
+  namespace: default
+  labels:
+    weblogic.domainUID: domain1
+
+spec:
+  # Set to 'PersistentVolume' to indicate 'Domain on PV'.
+  domainHomeSourceType: PersistentVolume
+
+  # The WebLogic Domain Home, this must be a location within
+  # the persistent volume for 'Domain on PV' domains.
+  domainHome: /shared/domains/domain1
+
+  # The WebLogic Server image that the Operator uses to start the domain
+  # **NOTE**:
+  # This sample uses General Availability (GA) images. GA images are suitable for demonstration and
+  # development purposes only where the environments are not available from the public Internet;
+  # they are not acceptable for production use. In production, you should always use CPU (patched)
+  # images from OCR or create your images using the WebLogic Image Tool.
+  # Please refer to the "OCR" and "WebLogic Images" pages in the WebLogic Kubernetes Operator
+  # documentation for details.
+  image: "container-registry.oracle.com/middleware/weblogic:12.2.1.4"
+
+  # Defaults to "Always" if image tag (version) is ':latest'
+  imagePullPolicy: IfNotPresent
+
+  # Identify which Secret contains the credentials for pulling an image
+  imagePullSecrets:
+    - name: wlsregcred
+  #- name: regsecret2
+
+  # Identify which Secret contains the WebLogic Admin credentials,
+  # the secret must contain 'username' and 'password' fields.
+  webLogicCredentialsSecret:
+    name: domain1-weblogic-credentials
+
+  # Whether to include the WebLogic Server stdout in the pod's stdout, default is true
+  includeServerOutInPodLog: true
+
+  # Whether to enable overriding your log file location, defaults to 'True'. See also 'logHome'.
+  #logHomeEnabled: false
+
+  # The location for domain log, server logs, server out, introspector out, and Node Manager log files
+  # see also 'logHomeEnabled', 'volumes', and 'volumeMounts'.
+  #logHome: /shared/logs/sample-domain1
+  #
+  # Set which WebLogic Servers the Operator will start
+  # - "Never" will not start any server in the domain
+  # - "AdminOnly" will start up only the administration server (no managed servers will be started)
+  # - "IfNeeded" will start all non-clustered servers, including the administration server, and clustered servers up to their replica count.
+  serverStartPolicy: IfNeeded
+
+  configuration:
+    # Settings for initializing the domain home on 'PersistentVolume'
+    initializeDomainOnPV:
+
+      # Settings for domain home on PV.
+      domain:
+         # Valid model domain types are 'WLS', and 'JRF', default is 'JRF'
+         domainType: WLS
+
+         # Domain creation image(s) containing WDT model, archives, and install.
+         #   "image"                - Image location
+         #   "imagePullPolicy"      - Pull policy, default "IfNotPresent"
+         #   "sourceModelHome"      - Model file directory in image, default "/auxiliary/models".
+         #   "sourceWDTInstallHome" - WDT install directory in image, default "/auxiliary/weblogic-deploy".
+         domainCreationImages:
+         - image: "${ACR_NAME}.azurecr.io/wdt-domain-image:WLS-v1"
+           imagePullPolicy: IfNotPresent
+           #sourceWDTInstallHome: /auxiliary/weblogic-deploy
+           #sourceModelHome: /auxiliary/models
+
+         # Optional configmap for additional models and variable files
+         #domainCreationConfigMap: sample-domain1-wdt-config-map
+
+    # Secrets that are referenced by model yaml macros
+    # (the model yaml in the optional configMap or in the image)
+    #secrets:
+    #- sample-domain1-datasource-secret
+
+  # Settings for all server pods in the domain including the introspector job pod
+  serverPod:
+    # Optional new or overridden environment variables for the domain's pods
+    # - This sample uses CUSTOM_DOMAIN_NAME in its image model file
+    #   to set the WebLogic domain name
+    env:
+    - name: CUSTOM_DOMAIN_NAME
+      value: "domain1"
+    - name: JAVA_OPTIONS
+      value: "-Dweblogic.StdoutDebugEnabled=false"
+    - name: USER_MEM_ARGS
+      value: "-Djava.security.egd=file:/dev/./urandom -Xms256m -Xmx512m "
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "768Mi"
+
+    # Volumes and mounts for hosting the domain home on PV and domain's logs. See also 'logHome'.
+    volumes:
+    - name: weblogic-domain-storage-volume
+      persistentVolumeClaim:
+        claimName: wls-azurefile-${TIMESTAMP}
+    volumeMounts:
+    - mountPath: /shared
+      name: weblogic-domain-storage-volume
+
+  # The desired behavior for starting the domain's administration server.
+  # adminServer:
+    # Setup a Kubernetes node port for the administration server default channel
+    #adminService:
+    #  channels:
+    #  - channelName: default
+    #    nodePort: 30701
+
+  # The number of managed servers to start for unlisted clusters
+  replicas: 3
+
+  # The name of each Cluster resource
+  clusters:
+  - name: sample-domain1-cluster-1
+
+  # Change the restartVersion to force the introspector job to rerun
+  # to force a roll of your domain's WebLogic Server pods.
+  restartVersion: '1'
+
+  # Changes to this field cause the operator to repeat its introspection of the
+  #  WebLogic domain configuration.
+  introspectVersion: '1'
+
+---
+
+apiVersion: "weblogic.oracle/v1"
+kind: Cluster
+metadata:
+  name: sample-domain1-cluster-1
+  # Update this with the namespace your domain will run in:
+  namespace: default
+  labels:
+    # Update this with the "domainUID" of your domain:
+    weblogic.domainUID: domain1
+spec:
+  # This must match a cluster name that is  specified in the WebLogic configuration
+  clusterName: cluster-1
+  # The number of managed servers to start for this cluster
+  replicas: 3
+
+
+EOF
+
+echo "sleep 30s"
+sleep 30s
+kubectl apply -f domain-resource.yaml
+
 }
 
 waitForJobComplete() {
@@ -546,8 +662,6 @@ cd ${scriptDir}
 # Setup the environment for running this script and perform initial validation checks
 initialize
 
-# Generate the yaml files for creating the domain
-createYamlFiles
 
 # All done if the execute option is true
 if [ "${executeIt}" = true ]; then
