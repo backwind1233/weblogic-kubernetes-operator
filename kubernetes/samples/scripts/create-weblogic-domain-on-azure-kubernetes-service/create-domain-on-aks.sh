@@ -387,8 +387,7 @@ spec:
 
   # Identify which Secret contains the credentials for pulling an image
   imagePullSecrets:
-    - name: wlsregcred
-  #- name: regsecret2
+    - name: ${namePrefix}regcred
 
   # Identify which Secret contains the WebLogic Admin credentials,
   # the secret must contain 'username' and 'password' fields.
