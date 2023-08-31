@@ -347,6 +347,9 @@ cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domai
 
 cd ${base_dir}
 cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-kubernetes-secrets
+echo "dockerEmail=${dockerEmail}"
+echo "dockerPassword=${dockerPassword}"
+echo "dockerUserName=${dockerUserName}"
 ./create-docker-credentials-secret.sh -s ${docker_secret_name} -e ${dockerEmail} -p ${dockerPassword} -u ${dockerUserName}
 
 
