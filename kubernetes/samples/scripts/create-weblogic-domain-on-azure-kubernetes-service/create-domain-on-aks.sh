@@ -208,12 +208,12 @@ createWebLogicDomain() {
 
   # Create Container Registry Credentials.
   # todo refactor here
-  # bash $dirKubernetesSecrets/create-docker-credentials-secret.sh \
-  # -e ${docker-email} \
-  # -p ${dockerPassword} \
-  # -u ${dockerUserName} \
-  # -s ${imagePullSecretName} \
-  # -d container-registry.oracle.com
+   bash $dirKubernetesSecrets/create-docker-credentials-secret.sh \
+   -e ${docker-email} \
+   -p ${dockerPassword} \
+   -u ${dockerUserName} \
+   -s ${imagePullSecretName} \
+   -d container-registry.oracle.com
 
   # Create WebLogic Server Domain
   echo Creating WebLogic Server domain ${domainUID}
