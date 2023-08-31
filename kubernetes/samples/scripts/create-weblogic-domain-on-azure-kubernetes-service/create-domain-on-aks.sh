@@ -26,49 +26,6 @@
 script="${BASH_SOURCE[0]}"
 scriptDir="$(cd "$(dirname "${script}")" && pwd)"
 
-#
-# Parse the command line options
-#
-executeIt=false
-while getopts "ehi:o:u:d:" opt; do
-  case $opt in
-  i)
-    valuesInputFile="${OPTARG}"
-    ;;
-  o)
-    outputDir="${OPTARG}"
-    ;;
-  u)
-    azureResourceUID="${OPTARG}"
-    ;;
-  e)
-    executeIt=true
-    ;;
-  d)
-    domainInputFile="${OPTARG}"
-    ;;
-  h)
-    usage 0
-    ;;
-  *)
-    usage 1
-    ;;
-  esac
-done
-
-if [ -z ${valuesInputFile} ]; then
-  echo "${script}: -i must be specified."
-  missingRequiredOption="true"
-fi
-
-if [ -z ${outputDir} ]; then
-  echo "${script}: -o must be specified."
-  missingRequiredOption="true"
-fi
-
-if [ "${missingRequiredOption}" == "true" ]; then
-  usage 1
-fi
 
 if [ -z "${azureResourceUID}" ]; then
   azureResourceUID=$(date +%s)
@@ -83,34 +40,20 @@ fail() {
 }
 
 #
-# Function to initialize and validate the output directory
-# for the generated yaml files for this domain.
-#
-initOutputDir() {
-  aksOutputDir="$outputDir/weblogic-on-aks"
-
-  scOutput="${aksOutputDir}/azure-csi-nfs.yaml"
-  pvcOutput="${aksOutputDir}/pvc.yaml"
-  adminLbOutput="${aksOutputDir}/admin-lb.yaml"
-  clusterLbOutput="${aksOutputDir}/cluster-lb.yaml"
-  domain1Output="${aksOutputDir}/domain1.yaml"
-
-  removeFileIfExists ${scOutput}
-  removeFileIfExists ${pvcOutput}
-  removeFileIfExists ${adminLbOutput}
-  removeFileIfExists ${clusterLbOutput}
-  removeFileIfExists ${domain1Output}
-  removeFileIfExists ${aksOutputDir}/create-domain-on-aks-inputs.yaml
-}
-
-#
 # Function to setup the environment to run the create Azure resource and domain job
 #
 initialize() {
 
-  source ./create-domain-on-aks-input.sh
+  source ./create-domain-on-aks-inputs.sh
+  source ~/.bashrc
   
   # Generate Azure resource name
+
+  export BRANCH_NAME="v4.1.0"
+  export base_dir="/tmp/tmp${azureResourceUID}"
+  export acr_account_name=${namePrefix}acr${azureResourceUID}
+  export docker_secret_name="${namePrefix}regcred"
+
   export azureResourceGroupName="${namePrefix}resourcegroup${azureResourceUID}"
   export aksClusterName="${namePrefix}akscluster${azureResourceUID}"
   export storageAccountName="${namePrefix}storage${azureResourceUID}"
@@ -195,16 +138,8 @@ createFileShare() {
 
   # Echo storage account name and key
   echo Storage account name: $storageAccountName
-  echo NFS file share name: ${azureStorageShareName}
+  echo NFS file share name: ${azureStorageShareName}  
 
-  # Mount the file share as a volume
-  echo Mounting file share as a volume.
-  ${KUBERNETES_CLI:-kubectl} apply -f ${scOutput}
-  ${KUBERNETES_CLI:-kubectl} get storageclass ${azureFileCsiNfsClassName} -o yaml
-  ${KUBERNETES_CLI:-kubectl} apply -f ${pvcOutput}
-  ${KUBERNETES_CLI:-kubectl} get pvc ${persistentVolumeClaimName} -o yaml
-
-  checkPvcState ${persistentVolumeClaimName} "Bound"
 }
 
 configureStorageAccountNetwork() {
@@ -272,79 +207,66 @@ createWebLogicDomain() {
   -p ${weblogicAccountPassword} -d ${domainUID}
 
   # Create Container Registry Credentials.
-  bash $dirKubernetesSecrets/create-docker-credentials-secret.sh \
-  -e ${docker-email} \
-  -p ${dockerPassword} \
-  -u ${dockerUserName} \
-  -s ${imagePullSecretName} \
-  -d container-registry.oracle.com
+  # todo refactor here
+  # bash $dirKubernetesSecrets/create-docker-credentials-secret.sh \
+  # -e ${docker-email} \
+  # -p ${dockerPassword} \
+  # -u ${dockerUserName} \
+  # -s ${imagePullSecretName} \
+  # -d container-registry.oracle.com
 
   # Create WebLogic Server Domain
   echo Creating WebLogic Server domain ${domainUID}
 
   buildandrunimage  
 
-  ${KUBERNETES_CLI:-kubectl} apply -f ${adminLbOutput}
-  ${KUBERNETES_CLI:-kubectl} apply -f ${clusterLbOutput}
 }
 
 buildandrunimage(){
-export ORACLE_USERNAME=oracle.ufgc5@aleeas.com
-export ORACLE_PASSWORD=
-
-export TIMESTAMP=$(date +%s)
-export NAME_PREFIX=wls
-export ACR_NAME=domainonpvaks${TIMESTAMP}
-export BASE_DIR="/tmp/tmp${TIMESTAMP}"
-export BRANCH_NAME="v4.1.0"
-
-export SECRET_NAME_DOCKER="${NAME_PREFIX}regcred"
-export WEBLOGIC_USERNAME="weblogic"
-export WEBLOGIC_PASSWORD="Secret123456"
 
 az extension add --name resource-graph
 
-mkdir ${BASE_DIR}
+mkdir ${base_dir}
 
 ## Build and push Image
 az acr create --resource-group $azureResourceGroupName \
-  --name ${ACR_NAME} \
+  --name ${acr_account_name} \
   --sku Standard
 
-az acr update -n ${ACR_NAME} --admin-enabled true
+az acr update -n ${acr_account_name} --admin-enabled true
 
-export LOGIN_SERVER=$(az acr show -n $ACR_NAME --query 'loginServer' -o tsv)
+export LOGIN_SERVER=$(az acr show -n $acr_account_name --query 'loginServer' -o tsv)
 echo $LOGIN_SERVER
-export USER_NAME=$(az acr credential show -n $ACR_NAME --query 'username' -o tsv)
+export USER_NAME=$(az acr credential show -n $acr_account_name --query 'username' -o tsv)
 echo $USER_NAME
-export PASSWORD=$(az acr credential show -n $ACR_NAME --query 'passwords[0].value' -o tsv)
+export PASSWORD=$(az acr credential show -n $acr_account_name --query 'passwords[0].value' -o tsv)
 echo $PASSWORD
 sudo docker login $LOGIN_SERVER -u $USER_NAME -p $PASSWORD
 
 # public access
-az acr update --name $ACR_NAME --anonymous-pull-enabled
+az acr update --name $acr_account_name --anonymous-pull-enabled
 
 ## need az acr login in order to push
-az acr login --name $ACR_NAME
+az acr login --name $acr_account_name
 
-cd ${BASE_DIR}
+cd ${base_dir}
 git clone --branch ${BRANCH_NAME} https://github.com/oracle/weblogic-kubernetes-operator.git
-mkdir -p ${BASE_DIR}/sample
-cp -r ${BASE_DIR}/weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain/domain-on-pv/* ${BASE_DIR}/sample
+mkdir -p ${base_dir}/sample
+cp -r ${base_dir}/weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain/domain-on-pv/* ${base_dir}/sample
 
-mkdir -p ${BASE_DIR}/sample/wdt-artifacts
+mkdir -p ${base_dir}/sample/wdt-artifacts
 
-cp -r ${BASE_DIR}/weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain/wdt-artifacts/* ${BASE_DIR}/sample/wdt-artifacts
+cp -r ${base_dir}/weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain/wdt-artifacts/* ${base_dir}/sample/wdt-artifacts
 
-cd ${BASE_DIR}/sample/wdt-artifacts
+cd ${base_dir}/sample/wdt-artifacts
 
 curl -m 120 -fL https://github.com/oracle/weblogic-deploy-tooling/releases/latest/download/weblogic-deploy.zip \
-  -o ${BASE_DIR}/sample/wdt-artifacts/weblogic-deploy.zip
+  -o ${base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
 
 curl -m 120 -fL https://github.com/oracle/weblogic-image-tool/releases/latest/download/imagetool.zip \
-  -o ${BASE_DIR}/sample/wdt-artifacts/imagetool.zip
+  -o ${base_dir}/sample/wdt-artifacts/imagetool.zip
 
-cd ${BASE_DIR}/sample/wdt-artifacts
+cd ${base_dir}/sample/wdt-artifacts
 
 unzip imagetool.zip
 
@@ -353,37 +275,79 @@ unzip imagetool.zip
 ./imagetool/bin/imagetool.sh cache addInstaller \
   --type wdt \
   --version latest \
-  --path ${BASE_DIR}/sample/wdt-artifacts/weblogic-deploy.zip
+  --path ${base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
 
-unzip ${BASE_DIR}/sample/wdt-artifacts/weblogic-deploy.zip
+unzip ${base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
 
-rm -f ${BASE_DIR}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip
+rm -f ${base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip
 
-cd ${BASE_DIR}/sample/wdt-artifacts/archives/archive-v1
+cd ${base_dir}/sample/wdt-artifacts/archives/archive-v1
 
-${BASE_DIR}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.sh add application -archive_file=${BASE_DIR}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip -source=wlsdeploy/applications/myapp-v1
+${base_dir}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.sh add application -archive_file=${base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip -source=wlsdeploy/applications/myapp-v1
 
-cd ${BASE_DIR}/sample/wdt-artifacts/wdt-model-files/WLS-v1
+cd ${base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1
 
 # --tag wlsgzhcontainer.azurecr.io/wdt-domain-image:WLS-v1 \
-${BASE_DIR}/sample/wdt-artifacts/imagetool/bin/imagetool.sh createAuxImage \
-  --tag ${ACR_NAME}.azurecr.io/wdt-domain-image:WLS-v1 \
+${base_dir}/sample/wdt-artifacts/imagetool/bin/imagetool.sh createAuxImage \
+  --tag ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1 \
   --wdtModel ./model.10.yaml \
   --wdtVariables ./model.10.properties \
   --wdtArchive ./archive.zip
 
-docker push ${ACR_NAME}.azurecr.io/wdt-domain-image:WLS-v1
+docker push ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1
 
+
+
+# Mount the file share as a volume
+echo Mounting file share as a volume.
+
+cat >azure-csi-nfs.yaml <<EOF
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: azurefile-csi-nfs
+provisioner: file.csi.azure.com
+parameters:
+  protocol: nfs
+  resourceGroup: ${azureResourceGroupName}
+  storageAccount: ${storageAccountName}
+  shareName: ${azureFileShareSecretName}
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+
+EOF
+
+cat >pvc.yaml <<EOF
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wls-azurefile-${azureResourceUID}
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: azurefile-csi-nfs
+  resources:
+    requests:
+      storage: 5Gi
+
+EOF
+
+kubectl apply -f ./azure-csi-nfs.yaml
+kubectl apply -f ./pvc.yaml
 
 
 ## 构建
-cd ${BASE_DIR}
+cd ${base_dir}
 cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain-credentials
-./create-weblogic-credentials.sh -u ${WEBLOGIC_USERNAME} -p ${WEBLOGIC_PASSWORD} -d domain1
+./create-weblogic-credentials.sh -u ${weblogicUserName} -p ${weblogicAccountPassword} -d domain1
 
-cd ${BASE_DIR}
+cd ${base_dir}
 cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-kubernetes-secrets
-./create-docker-credentials-secret.sh -s ${SECRET_NAME_DOCKER} -e ${ORACLE_USERNAME} -p ${ORACLE_PASSWORD} -u ${ORACLE_USERNAME}
+./create-docker-credentials-secret.sh -s ${docker_secret_name} -e ${dockerEmail} -p ${dockerPassword} -u ${dockerUserName}
 
 
 cat >domain-resource.yaml <<EOF
@@ -462,7 +426,7 @@ spec:
          #   "sourceModelHome"      - Model file directory in image, default "/auxiliary/models".
          #   "sourceWDTInstallHome" - WDT install directory in image, default "/auxiliary/weblogic-deploy".
          domainCreationImages:
-         - image: "${ACR_NAME}.azurecr.io/wdt-domain-image:WLS-v1"
+         - image: "${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1"
            imagePullPolicy: IfNotPresent
            #sourceWDTInstallHome: /auxiliary/weblogic-deploy
            #sourceModelHome: /auxiliary/models
@@ -496,7 +460,7 @@ spec:
     volumes:
     - name: weblogic-domain-storage-volume
       persistentVolumeClaim:
-        claimName: wls-azurefile-${TIMESTAMP}
+        claimName: wls-azurefile-${azureResourceUID}
     volumeMounts:
     - mountPath: /shared
       name: weblogic-domain-storage-volume
@@ -548,57 +512,55 @@ echo "sleep 30s"
 sleep 30s
 kubectl apply -f domain-resource.yaml
 
+
+cat >admin-lb.yaml <<EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: domain1-admin-server-external-lb
+  namespace: default
+spec:
+  ports:
+  - name: default
+    port: 7001
+    protocol: TCP
+    targetPort: 7001
+  selector:
+    weblogic.domainUID: domain1
+    weblogic.serverName: admin-server
+  sessionAffinity: None
+  type: LoadBalancer
+
+EOF
+
+cat >cluster-lb.yaml <<EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: domain1-cluster-1-lb
+  namespace: default
+spec:
+  ports:
+  - name: default
+    port: 8001
+    protocol: TCP
+    targetPort: 8001
+  selector:
+    weblogic.domainUID: domain1
+    weblogic.clusterName: cluster-1
+  sessionAffinity: None
+  type: LoadBalancer
+
+EOF
+
+kubectl apply -f admin-lb.yaml
+kubectl apply -f cluster-lb.yaml
+
 }
 
+
 waitForJobComplete() {
-  local attempts=0
-  local svcState="running"
-  while [ ! "$svcState" == "completed" ] && [ ! $attempts -eq 30 ]; do
-    svcState="completed"
-    attempts=$((attempts + 1))
-    echo Waiting for job completed...${attempts}
-    sleep 120
-
-    # If the job is completed, there should have the following services created,
-    #    ${domainUID}-${adminServerName}, e.g. domain1-admin-server
-    #    ${domainUID}-${adminServerName}-ext, e.g. domain1-admin-server-ext
-    #    ${domainUID}-${adminServerName}-external-lb, e.g domain1-admin-server-external-lb
-    local adminServiceCount=$(${KUBERNETES_CLI:-kubectl} get svc | grep -c "${domainUID}-${adminServerName}")
-    if [ ${adminServiceCount} -lt 3 ]; then svcState="running"; fi
-
-    # If the job is completed, there should have the following services created, .assuming initialManagedServerReplicas=2
-    #    ${domainUID}-${managedServerNameBase}1, e.g. domain1-managed-server1
-    #    ${domainUID}-${managedServerNameBase}2, e.g. domain1-managed-server2
-    local managedServiceCount=$(${KUBERNETES_CLI:-kubectl} get svc | grep -c "${domainUID}-${managedServerNameBase}")
-    if [ ${managedServiceCount} -lt ${initialManagedServerReplicas} ]; then svcState="running"; fi
-
-    # If the job is completed, there should have no service in pending status.
-    local pendingCount=$(${KUBERNETES_CLI:-kubectl} get svc | grep -c "pending")
-    if [ ${pendingCount} -ne 0 ]; then svcState="running"; fi
-
-    # If the job is completed, there should have the following pods running
-    #    ${domainUID}-${adminServerName}, e.g. domain1-admin-server
-    #    ${domainUID}-${managedServerNameBase}1, e.g. domain1-managed-server1
-    #    to
-    #    ${domainUID}-${managedServerNameBase}n, e.g. domain1-managed-servern, n = initialManagedServerReplicas
-    local runningPodCount=$(${KUBERNETES_CLI:-kubectl} get pods | grep "${domainUID}" | grep -c "Running")
-    if [[ $runningPodCount -le ${initialManagedServerReplicas} ]]; then svcState="running"; fi
-
-    echo ==============================Current Status==========================================
-    ${KUBERNETES_CLI:-kubectl} get svc
-    echo ""
-    ${KUBERNETES_CLI:-kubectl} get pods
-    echo ======================================================================================
-  done
-
-  # If all the services are completed, print service details
-  # Otherwise, ask the user to refer to document for troubleshooting
-  if [ "$svcState" == "completed" ]; then
-    ${KUBERNETES_CLI:-kubectl} get pods
-    ${KUBERNETES_CLI:-kubectl} get svc
-  else
-    echo It takes a little long to create domain, please refer to http://oracle.github.io/weblogic-kubernetes-operator/samples/azure-kubernetes-service/#troubleshooting
-  fi
+sleep 30s
 }
 
 printSummary() {
@@ -622,24 +584,16 @@ printSummary() {
     echo "  az aks get-credentials --resource-group ${azureResourceGroupName} --name ${aksClusterName}"
     echo ""
 
-    if [ "${exposeAdminNodePort}" = true ]; then
-      adminLbIP=$(${KUBERNETES_CLI:-kubectl} get svc ${domainUID}-${adminServerName}-external-lb --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
-      echo "Administration console access is available at http://${adminLbIP}:${adminPort}/console"
-    fi
+    adminLbIP=$(${KUBERNETES_CLI:-kubectl} get svc domain1-admin-server-external-lb --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    echo "Administration console access is available at http://${adminLbIP}:7001/console"
+    
 
     echo ""
-    clusterLbIP=$(${KUBERNETES_CLI:-kubectl} get svc ${domainUID}-${clusterName}-external-lb --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
-    echo "Cluster external ip is ${clusterLbIP}, after you deploy application to WebLogic Server cluster, you can access it at http://${clusterLbIP}:${managedServerPort}/<your-app-path>"
+    clusterLbIP=$(${KUBERNETES_CLI:-kubectl} get svc domain1-cluster-1-lb --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    echo "Cluster external ip is ${clusterLbIP}, you can access http://${clusterLbIP}:8001/myapp_war/index.jsp"
+    
   fi
-  echo ""
-  echo "The following files were generated:"
-  echo "  ${scOutput}"
-  echo "  ${pvcOutput}"
-  echo "  ${adminLbOutput}"
-  echo "  ${clusterLbOutput}"
-  echo "  ${domain1Output}"
-  echo ""
-
+  
   echo "Completed"
 }
 
@@ -662,6 +616,7 @@ cd ${scriptDir}
 # Setup the environment for running this script and perform initial validation checks
 initialize
 
+executeIt=true
 
 # All done if the execute option is true
 if [ "${executeIt}" = true ]; then
@@ -682,6 +637,7 @@ if [ "${executeIt}" = true ]; then
   createWebLogicDomain
 
   # Wait for all the jobs completed
+  # todo
   waitForJobComplete
 fi
 

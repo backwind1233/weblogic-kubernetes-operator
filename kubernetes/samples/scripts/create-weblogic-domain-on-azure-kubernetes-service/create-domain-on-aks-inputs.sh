@@ -78,9 +78,6 @@ export serverPodCpuLimit="250m"
 # Parameter "persistentVolumeClaimName" will be overwritten with this field in kubernetes/samples/scripts/create-weblogic-domain/domain-home-on-pv/create-domain-inputs.yaml
 export persistentVolumeClaimNameSuffix=azurefile
 
-# Password for WebLogic account.
-export weblogicAccountPassword=weblogic-account-password
-
 # WebLogic Server image.
 # Parameter "image" will be overwritten with this field in kubernetes/samples/scripts/create-weblogic-domain/domain-home-on-pv/create-domain-inputs.yaml
 # **NOTE**:
@@ -93,8 +90,10 @@ export weblogicAccountPassword=weblogic-account-password
 export weblogicDockerImage=container-registry.oracle.com/middleware/weblogic:12.2.1.4
 
 # Name of weblogic user.
-export weblogicUserName=weblogic-user-name
+export weblogicUserName=weblogic
 
+# Password for WebLogic account.
+export weblogicAccountPassword=Secret123456!
 
 
 
