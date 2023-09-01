@@ -145,6 +145,20 @@ parametersValidate() {
   export dockerEmail="$email"
   export dockerPassword="$password"
 
+
+  # Attempt to login to Docker
+  docker login container-registry.oracle.com -u "$dockerEmail" -p "$dockerPassword" > /dev/null 2>&1
+
+  # Check the login result
+  if [ $? -eq 0 ]; then
+    echo "Oracle Single Sign-On (SSO) account Username and password are correct"
+    # Logout from Docker
+    docker logout > /dev/null 2>&1
+  else
+    print_red "[ERROR]Invalid Oracle Single Sign-On (SSO) account username or password."
+    exit 1
+  fi
+
 }
 
 
