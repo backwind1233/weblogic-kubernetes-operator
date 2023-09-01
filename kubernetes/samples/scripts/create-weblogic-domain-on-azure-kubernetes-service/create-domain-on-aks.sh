@@ -66,6 +66,7 @@ print_red() {
 # Function to validate the host environment meets the prerequisites.
 # $1 - text of message
 envValidate() {
+  echo "Checking host environment..."
   # Check if the user is logged in to Azure CLI
   if az account show >/dev/null 2>&1; then
     print_blue "Logged in to Azure CLI"
@@ -110,6 +111,7 @@ envValidate() {
       exit 1
   fi
 
+  echo "Checking host environment passed"
 }
 
 parametersValidate() {
