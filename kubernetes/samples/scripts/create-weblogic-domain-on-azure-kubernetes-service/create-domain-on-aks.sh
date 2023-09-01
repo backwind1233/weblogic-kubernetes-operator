@@ -605,7 +605,7 @@ while [ $waiting_time -lt $max_wait_time ]; do
         break
     fi
     
-    echo "Pod is not running. Waiting for $interval seconds..."
+    echo "Pod is not running yet. Waiting for $interval seconds..."
     sleep $interval
     waiting_time=$((waiting_time + interval))
 done
