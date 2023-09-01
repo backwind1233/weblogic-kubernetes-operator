@@ -649,10 +649,11 @@ cd ${scriptDir}
 # Do these steps to create Azure resources and a WebLogic Server domain.
 #
 
-envValidate
-
 # Setup the environment for running this script and perform initial validation checks
 initialize
+
+# Validate the host environment meets the prerequisites.
+envValidate
 
 # Create resource group
 createResourceGroup
