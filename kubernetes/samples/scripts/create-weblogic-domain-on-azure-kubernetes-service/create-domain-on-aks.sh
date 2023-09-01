@@ -496,7 +496,6 @@ mkdir -p ${image_build_base_dir}/sample
 cp -r ${image_build_base_dir}/weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain/domain-on-pv/* ${image_build_base_dir}/sample
 
 mkdir -p ${image_build_base_dir}/sample/wdt-artifacts
-
 cp -r ${image_build_base_dir}/weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain/wdt-artifacts/* ${image_build_base_dir}/sample/wdt-artifacts
 
 cd ${image_build_base_dir}/sample/wdt-artifacts
@@ -508,20 +507,16 @@ curl -m 120 -fL https://github.com/oracle/weblogic-image-tool/releases/latest/do
   -o ${image_build_base_dir}/sample/wdt-artifacts/imagetool.zip
 
 cd ${image_build_base_dir}/sample/wdt-artifacts
-
 unzip imagetool.zip
 
 ./imagetool/bin/imagetool.sh cache deleteEntry --key wdt_latest
-
 ./imagetool/bin/imagetool.sh cache addInstaller \
   --type wdt \
   --version latest \
   --path ${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
 
 unzip ${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
-
 rm -f ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip
-
 cd ${image_build_base_dir}/sample/wdt-artifacts/archives/archive-v1
 
 ${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.sh \ 
