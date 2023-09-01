@@ -468,10 +468,9 @@ EOF
 buildDomainOnPvImage(){
 
 az extension add --name resource-graph
-
 mkdir ${image_build_base_dir}
 
-## Build and push Image
+## Build Azure ACR
 az acr create --resource-group $azureResourceGroupName \
   --name ${acr_account_name} \
   --sku Standard
@@ -484,12 +483,13 @@ export PASSWORD=$(az acr credential show -n $acr_account_name --query 'passwords
 
 sudo docker login $LOGIN_SERVER -u $USER_NAME -p $PASSWORD
 
-# public access
+# make public access
 az acr update --name $acr_account_name --anonymous-pull-enabled
 
 ## need az acr login in order to push
 az acr login --name $acr_account_name
 
+## Build image
 cd ${image_build_base_dir}
 git clone --branch ${image_build_branch_name} https://github.com/oracle/weblogic-kubernetes-operator.git
 mkdir -p ${image_build_base_dir}/sample
@@ -524,7 +524,9 @@ rm -f ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archiv
 
 cd ${image_build_base_dir}/sample/wdt-artifacts/archives/archive-v1
 
-${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.sh add application -archive_file=${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip -source=wlsdeploy/applications/myapp-v1
+${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.sh \ 
+  add application \
+  -archive_file=${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip -source=wlsdeploy/applications/myapp-v1
 
 cd ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1
 
@@ -535,6 +537,7 @@ ${image_build_base_dir}/sample/wdt-artifacts/imagetool/bin/imagetool.sh createAu
   --wdtVariables ./model.10.properties \
   --wdtArchive ./archive.zip
 
+## Push image
 docker push ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1
 
 }
@@ -545,6 +548,9 @@ waitForJobComplete() {
 waiting_time=0
 max_wait_time=600
 interval=30
+
+echo "Wait Job to be completed.Waiting for $interval seconds..."
+sleep $interval
 
 while [ $waiting_time -lt $max_wait_time ]; do
     status=$(kubectl get pod/domain1-admin-server -o=jsonpath='{.status.phase}')
