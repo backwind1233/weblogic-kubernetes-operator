@@ -112,6 +112,40 @@ envValidate() {
 
 }
 
+parametersValidate() {
+  # Get the values of environment variables
+  email="$dockerEmail"
+  password="$dockerPassword"
+
+  # Check for default values and prompt for setting
+  if [ "$email" = "docker-email" ]; then
+    echo -n "Please enter a value for 'dockerEmail'(Oracle Single Sign-On (SSO) account email): "
+    read input_email
+    if [ -z "$input_email" ]; then
+      echo "No value provided for 'dockerEmail'. Please set the value and rerun the script."
+      exit 1
+    fi
+    email="$input_email"
+  fi
+
+  if [ "$password" = "docker-password" ]; then
+    echo -n "Please enter a value for 'dockerPassword'(Oracle Single Sign-On (SSO) account password): "
+    read -s input_password
+    echo
+    if [ -z "$input_password" ]; then
+      echo "No value provided for 'dockerPassword'. Please set the value and rerun the script."
+      exit 1
+    fi
+    password="$input_password"
+  fi
+
+  # Export the updated values of environment variables
+  export dockerEmail="$email"
+  export dockerPassword="$password"
+
+}
+
+
 #
 # Function to setup the environment to run the create Azure resource and domain job
 #
@@ -286,7 +320,7 @@ createWebLogicDomain() {
   cd ${image_build_base_dir}
   cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-kubernetes-secrets
 
-  ./create-docker-credentials-secret.sh -s ${docker_secret_name} -e ${dockerEmail} -p ${dockerPassword} -u ${dockerUserName}
+  ./create-docker-credentials-secret.sh -s ${docker_secret_name} -e ${dockerEmail} -p ${dockerPassword} -u ${dockerEmail}
 
   # generate yaml
   generateYamls
