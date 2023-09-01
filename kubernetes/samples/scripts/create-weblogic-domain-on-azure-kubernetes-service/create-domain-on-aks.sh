@@ -209,7 +209,29 @@ createWebLogicDomain() {
   # Create WebLogic Server Domain
   echo Creating WebLogic Server domain ${domainUID}
 
-  buildandrunimage  
+  buildDomainOnPvImage  
+
+  # create credentials
+  cd ${base_dir}
+  cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain-credentials
+  ./create-weblogic-credentials.sh -u ${weblogicUserName} -p ${weblogicAccountPassword} -d domain1
+
+  cd ${base_dir}
+  cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-kubernetes-secrets
+
+  ./create-docker-credentials-secret.sh -s ${docker_secret_name} -e ${dockerEmail} -p ${dockerPassword} -u ${dockerUserName}
+
+  # generate yaml
+  generateYamls
+
+  # Mount the file share as a volume
+  echo Mounting file share as a volume.
+  kubectl apply -f ./azure-csi-nfs.yaml
+  kubectl apply -f ./pvc.yaml
+
+  kubectl apply -f domain-resource.yaml
+  kubectl apply -f admin-lb.yaml
+  kubectl apply -f cluster-lb.yaml
 
 }
 
@@ -449,7 +471,7 @@ EOF
 
 }
 
-buildandrunimage(){
+buildDomainOnPvImage(){
 
 az extension add --name resource-graph
 
@@ -522,31 +544,6 @@ ${base_dir}/sample/wdt-artifacts/imagetool/bin/imagetool.sh createAuxImage \
   --wdtArchive ./archive.zip
 
 docker push ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1
-
-
-# create credentials
-cd ${base_dir}
-cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain-credentials
-./create-weblogic-credentials.sh -u ${weblogicUserName} -p ${weblogicAccountPassword} -d domain1
-
-cd ${base_dir}
-cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-kubernetes-secrets
-
-./create-docker-credentials-secret.sh -s ${docker_secret_name} -e ${dockerEmail} -p ${dockerPassword} -u ${dockerUserName}
-
-# generate yaml
-generateYamls
-
-# Mount the file share as a volume
-echo Mounting file share as a volume.
-kubectl apply -f ./azure-csi-nfs.yaml
-kubectl apply -f ./pvc.yaml
-
-echo "sleep 30s"
-sleep 30s
-kubectl apply -f domain-resource.yaml
-kubectl apply -f admin-lb.yaml
-kubectl apply -f cluster-lb.yaml
 
 }
 
