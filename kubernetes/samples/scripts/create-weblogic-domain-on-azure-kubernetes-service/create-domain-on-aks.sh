@@ -40,6 +40,56 @@ fail() {
 }
 
 #
+# Function to validate the host environment meets the prerequisites.
+# $1 - text of message
+envValidate() {
+  # Check if the user is logged in to Azure CLI
+  if az account show >/dev/null 2>&1; then
+    echo "Logged in to Azure CLI"
+  else
+    echo "Not logged in to Azure CLI. Please log in."
+    exit 1
+  fi
+
+  # Check if Java JDK is installed
+  java_version=$(java -version 2>&1)
+
+  # Check if the output contains "java version"
+  if echo "$java_version" | grep -q "java version"; then
+    echo "Java JDK is installed. Version:"
+    java -version
+  else
+    echo "Java JDK is not installed. Please install Java JDK."
+    exit 1
+  fi
+
+  # Check if Docker is installed
+  if command -v docker &> /dev/null; then
+      echo "Docker is installed."
+  else
+      echo "Docker is not installed. Please install Docker."
+      exit 1
+  fi
+
+  # Check if Helm is installed
+  if command -v helm &> /dev/null; then
+      echo "Helm is installed."
+  else
+      echo "Helm is not installed. Please install Helm."
+      exit 1
+  fi
+
+  # Check if kubectl is installed
+  if command -v kubectl &> /dev/null; then
+      echo "kubectl is installed."
+  else
+      echo "kubectl is not installed. Please install kubectl."
+      exit 1
+  fi
+
+}
+
+#
 # Function to setup the environment to run the create Azure resource and domain job
 #
 initialize() {
@@ -586,21 +636,20 @@ printSummary() {
   adminLbIP=$(${KUBERNETES_CLI:-kubectl} get svc domain1-admin-server-external-lb --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
   echo "Administration console access is available at http://${adminLbIP}:7001/console"
   
-
   echo ""
   clusterLbIP=$(${KUBERNETES_CLI:-kubectl} get svc domain1-cluster-1-lb --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
   echo "Cluster external ip is ${clusterLbIP}, you can access http://${clusterLbIP}:8001/myapp_war/index.jsp"
   
-  
   echo "Completed"
 }
-
 
 cd ${scriptDir}
 
 #
 # Do these steps to create Azure resources and a WebLogic Server domain.
 #
+
+envValidate
 
 # Setup the environment for running this script and perform initial validation checks
 initialize
