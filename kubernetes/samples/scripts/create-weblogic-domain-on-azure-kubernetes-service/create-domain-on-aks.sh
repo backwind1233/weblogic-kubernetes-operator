@@ -111,7 +111,7 @@ envValidate() {
       exit 1
   fi
 
-  echo "Checking host environment passed"
+  echo "Checking host environment passed."
 }
 
 parametersValidate() {
