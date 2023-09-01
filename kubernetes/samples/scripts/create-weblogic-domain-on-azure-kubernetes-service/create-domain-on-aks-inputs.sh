@@ -14,6 +14,12 @@ export dockerEmail=docker-email
 # Oracle SSO account password, used to pull the WebLogic Server image.
 export dockerPassword=docker-password
 
+# Name of weblogic user.
+export weblogicUserName=weblogic
+
+# Password for WebLogic account.
+export weblogicAccountPassword=Secret123456!
+
 # Specify where to create azure resource.
 export azureLocation=eastus
 
@@ -85,12 +91,6 @@ export persistentVolumeClaimNameSuffix=azurefile
 # Please refer to the `OCR` and `WebLogic Images` pages in the WebLogic Kubernetes Operator
 # documentation for details.
 export weblogicDockerImage=container-registry.oracle.com/middleware/weblogic:12.2.1.4
-
-# Name of weblogic user.
-export weblogicUserName=weblogic
-
-# Password for WebLogic account.
-export weblogicAccountPassword=Secret123456!
 
 
 

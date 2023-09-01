@@ -650,8 +650,8 @@ docker push ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1
 waitForJobComplete() {
 
 waiting_time=0
-max_wait_time=600
-interval=30
+max_wait_time=900
+interval=60
 
 echo "Wait Job to be completed.Waiting for $interval seconds..."
 sleep $interval
