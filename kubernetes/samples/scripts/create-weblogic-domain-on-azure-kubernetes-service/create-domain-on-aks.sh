@@ -39,15 +39,38 @@ fail() {
   exit 1
 }
 
+# Define display end-------------
+BLUE="\e[34m"
+RED="\e[31m"
+RESET="\e[0m"
+
+# Function: Print colored message
+print_message() {
+    local contenxt="$1"
+    local color="$2"
+
+    echo -e "${color} ${contenxt}${RESET}"
+}
+
+print_blue() {
+    local contenxt="$1"
+    echo -e "${BLUE} ${contenxt}${RESET}"
+}
+
+print_red() {
+    local contenxt="$1"
+    echo -e "${RED} ${contenxt}${RESET}"
+}
+
 #
 # Function to validate the host environment meets the prerequisites.
 # $1 - text of message
 envValidate() {
   # Check if the user is logged in to Azure CLI
   if az account show >/dev/null 2>&1; then
-    echo "Logged in to Azure CLI"
+    print_blue "Logged in to Azure CLI"
   else
-    echo "Not logged in to Azure CLI. Please log in."
+    print_red "[ERROR]Not logged in to Azure CLI. Please log in."
     exit 1
   fi
 
@@ -56,10 +79,10 @@ envValidate() {
 
   # Check if the output contains "java version"
   if echo "$java_version" | grep -q "java version"; then
-    echo "Java JDK is installed. Version:"
+    print_blue "Java JDK is installed. Version:"
     java -version
   else
-    echo "Java JDK is not installed. Please install Java JDK."
+    print_red "[ERROR]Java JDK is not installed. Please install Java JDK."
     exit 1
   fi
 
@@ -67,23 +90,23 @@ envValidate() {
   if command -v docker &> /dev/null; then
       echo "Docker is installed."
   else
-      echo "Docker is not installed. Please install Docker."
+      print_red "[ERROR]Docker is not installed. Please install Docker."
       exit 1
   fi
 
   # Check if Helm is installed
   if command -v helm &> /dev/null; then
-      echo "Helm is installed."
+      print_blue "Helm is installed."
   else
-      echo "Helm is not installed. Please install Helm."
+      print_red "[ERROR]Helm is not installed. Please install Helm."
       exit 1
   fi
 
   # Check if kubectl is installed
   if command -v kubectl &> /dev/null; then
-      echo "kubectl is installed."
+      print_blue "kubectl is installed."
   else
-      echo "kubectl is not installed. Please install kubectl."
+      print_red "[ERROR]kubectl is not installed. Please install kubectl."
       exit 1
   fi
 
