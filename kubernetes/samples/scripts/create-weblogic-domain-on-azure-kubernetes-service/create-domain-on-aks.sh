@@ -712,6 +712,8 @@ initialize
 # Validate the host environment meets the prerequisites.
 envValidate
 
+parametersValidate
+
 # Create resource group
 createResourceGroup
 
