@@ -201,11 +201,6 @@ createWebLogicDomain() {
   # Enable the operator to monitor the namespace
   ${KUBERNETES_CLI:-kubectl} label namespace default weblogic-operator=enabled
 
-  # Create WebLogic Server Domain Credentials.
-  echo Creating WebLogic Server Domain credentials, with user ${weblogicUserName}, domainUID ${domainUID}
-  bash ${dirCreateDomainCredentials}/create-weblogic-credentials.sh -u ${weblogicUserName} \
-  -p ${weblogicAccountPassword} -d ${domainUID}
-
   # Create WebLogic Server Domain
   echo Creating WebLogic Server domain ${domainUID}
 
@@ -485,11 +480,9 @@ az acr create --resource-group $azureResourceGroupName \
 az acr update -n ${acr_account_name} --admin-enabled true
 
 export LOGIN_SERVER=$(az acr show -n $acr_account_name --query 'loginServer' -o tsv)
-echo $LOGIN_SERVER
 export USER_NAME=$(az acr credential show -n $acr_account_name --query 'username' -o tsv)
-echo $USER_NAME
 export PASSWORD=$(az acr credential show -n $acr_account_name --query 'passwords[0].value' -o tsv)
-echo $PASSWORD
+
 sudo docker login $LOGIN_SERVER -u $USER_NAME -p $PASSWORD
 
 # public access
@@ -553,48 +546,38 @@ sleep 30s
 }
 
 printSummary() {
-  if [ "${executeIt}" = true ]; then
-    regionJsonExcerpt=$(az group list --query "[?name=='${azureResourceGroupName}']" | grep location)
-    tokens=($(
-      IFS='"'
-      for word in $regionJsonExcerpt; do echo "$word"; done
-    ))
-    region=${tokens[2]}
-    echo ""
-    echo ""
-    echo "The following Azure Resouces have been created: "
-    echo "  Resource groups: ${azureResourceGroupName}, MC_${azureResourceGroupName}_${aksClusterName}_${region}"
-    echo "  Kubernetes service cluster name: ${aksClusterName}"
-    echo "  Storage account: ${storageAccountName}"
-    echo ""
-    echo "Domain ${domainName} was created and was started by the WebLogic Kubernetes Operator"
-    echo ""
-    echo "Connect your ${KUBERNETES_CLI:-kubectl} to this cluster with this command:"
-    echo "  az aks get-credentials --resource-group ${azureResourceGroupName} --name ${aksClusterName}"
-    echo ""
 
-    adminLbIP=$(${KUBERNETES_CLI:-kubectl} get svc domain1-admin-server-external-lb --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
-    echo "Administration console access is available at http://${adminLbIP}:7001/console"
-    
+  regionJsonExcerpt=$(az group list --query "[?name=='${azureResourceGroupName}']" | grep location)
+  tokens=($(
+    IFS='"'
+    for word in $regionJsonExcerpt; do echo "$word"; done
+  ))
+  region=${tokens[2]}
+  echo ""
+  echo ""
+  echo "The following Azure Resouces have been created: "
+  echo "  Resource groups: ${azureResourceGroupName}, MC_${azureResourceGroupName}_${aksClusterName}_${region}"
+  echo "  Kubernetes service cluster name: ${aksClusterName}"
+  echo "  Storage account: ${storageAccountName}"
+  echo ""
+  echo "Domain ${domainName} was created and was started by the WebLogic Kubernetes Operator"
+  echo ""
+  echo "Connect your ${KUBERNETES_CLI:-kubectl} to this cluster with this command:"
+  echo "  az aks get-credentials --resource-group ${azureResourceGroupName} --name ${aksClusterName}"
+  echo ""
 
-    echo ""
-    clusterLbIP=$(${KUBERNETES_CLI:-kubectl} get svc domain1-cluster-1-lb --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
-    echo "Cluster external ip is ${clusterLbIP}, you can access http://${clusterLbIP}:8001/myapp_war/index.jsp"
-    
-  fi
+  adminLbIP=$(${KUBERNETES_CLI:-kubectl} get svc domain1-admin-server-external-lb --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo "Administration console access is available at http://${adminLbIP}:7001/console"
+  
+
+  echo ""
+  clusterLbIP=$(${KUBERNETES_CLI:-kubectl} get svc domain1-cluster-1-lb --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo "Cluster external ip is ${clusterLbIP}, you can access http://${clusterLbIP}:8001/myapp_war/index.jsp"
+  
   
   echo "Completed"
 }
 
-cd ${scriptDir}
-
-cd ..
-export dirSampleScripts=$(pwd)
-export dirCreateDomain="${dirSampleScripts}/create-weblogic-domain/domain-home-on-pv"
-export dirCreateDomainCredentials="${dirSampleScripts}/create-weblogic-domain-credentials"
-export dirKubernetesSecrets="${dirSampleScripts}/create-kubernetes-secrets"
-export selectorAdminServerName="serverName"
-export selectorClusterServerName="clusterName"
 
 cd ${scriptDir}
 
@@ -605,30 +588,25 @@ cd ${scriptDir}
 # Setup the environment for running this script and perform initial validation checks
 initialize
 
-executeIt=true
+# Create resource group
+createResourceGroup
 
-# All done if the execute option is true
-if [ "${executeIt}" = true ]; then
+# Create Azure Kubernetes Service and connect to AKS cluster
+createAndConnectToAKSCluster
 
-  # Create resource group
-  createResourceGroup
+# Create File Share
+createFileShare
 
-  # Create Azure Kubernetes Service and connect to AKS cluster
-  createAndConnectToAKSCluster
+# Install WebLogic Operator to AKS Cluster
+installWebLogicOperator
 
-  # Create File Share
-  createFileShare
+# Create WebLogic Server Domain
+createWebLogicDomain
 
-  # Install WebLogic Operator to AKS Cluster
-  installWebLogicOperator
+# Wait for all the jobs completed
+# todo
+waitForJobComplete
 
-  # Create WebLogic Server Domain
-  createWebLogicDomain
-
-  # Wait for all the jobs completed
-  # todo
-  waitForJobComplete
-fi
 
 # Print summary
 printSummary
