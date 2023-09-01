@@ -9,5 +9,4 @@ Given the above output, the following Azure CLI commands will delete the resourc
 
 ```shell
 $ az group delete --yes --no-wait --name ejb8191resourcegroup1597641911
-$ az group delete --yes --no-wait --name MC_ejb8191resourcegroup1597641911_ejb8191akscluster1597641911_eastus
 ```
