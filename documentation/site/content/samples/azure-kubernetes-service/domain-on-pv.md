@@ -235,13 +235,13 @@ You must create `LoadBalancer` services for the Administration Server and the WL
   Create the load balancer services using the following commands:
 
   ```shell
-  $ kubectl apply -f ~/azure/weblogic-on-aks/admin-lb.yaml
+  $ kubectl apply -f admin-lb.yaml
   ```
   ```
   service/domain1-admin-server-external-lb created
   ```
   ```shell
-  $ kubectl  apply -f ~/azure/weblogic-on-aks/cluster-lb.yaml
+  $ kubectl  apply -f cluster-lb.yaml
   ```
   ```
   service/domain1-cluster-1-external-lb created

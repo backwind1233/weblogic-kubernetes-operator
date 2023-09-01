@@ -186,28 +186,43 @@ You will dynamically create and use a persistent volume with Azure Files NFS sha
 
 ##### Create Storage Class
 
-This sample will dynamically create and use a persistent volume with Azure Files in AKS.  These features are passed to Kubernetes using YAML files.
-
-##### Apply generated configuration files
-
-To define how an Azure file NFS share is created, we have provided a configuration file `azure-csi-nfs.yaml`. You can find it in your output directory.
-
-The following command displays the YAML content of your current settings. This should be the same with content in `azure-csi-nfs.yaml`. The Storage Class name is `azurefile-csi-nfs`.
-
-This sample uses Azure Files Container Storage Interface (CSI) drivers to manage the NFS file share, provisioner is `file.csi.azure.com`, see the [Azure Files CSI drivers documentation](https://docs.microsoft.com/azure/aks/azure-files-csi).
+##### Generated configuration files
+Use below command to generate configuration files.
 
 ```shell
-cat <<EOF
+cat >azure-csi-nfs.yaml <<EOF
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
+
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: azurefile-csi-nfs
 provisioner: file.csi.azure.com
-allowVolumeExpansion: true
 parameters:
   protocol: nfs
-mountOptions:
-  - nconnect=4
+  resourceGroup: ${AKS_PERS_RESOURCE_GROUP}
+  storageAccount: ${AKS_PERS_STORAGE_ACCOUNT_NAME}
+  shareName: ${AKS_PERS_SHARE_NAME}
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+
+EOF
+
+cat >pvc.yaml <<EOF
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wls-azurefile-${azureResourceUID}
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: azurefile-csi-nfs
+  resources:
+    requests:
+      storage: 5Gi
+
 EOF
 ```
 
@@ -215,10 +230,7 @@ Use the `kubectl` command to create the Storage Class and persistent volume clai
 
 ```shell
 $ kubectl apply -f ~/azure/weblogic-on-aks/azure-csi-nfs.yaml
-```
-
-```
-persistentvolume/wls-azurefile created
+$ kubectl apply -f ~/azure/weblogic-on-aks/pvc.yaml
 ```
 
 Use the following command to verify:
