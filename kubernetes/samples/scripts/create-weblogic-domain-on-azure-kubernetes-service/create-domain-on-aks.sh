@@ -49,8 +49,9 @@ initialize() {
   
   # Generate Azure resource name
 
-  export BRANCH_NAME="v4.1.0"
-  export base_dir="/tmp/tmp${azureResourceUID}"
+  export image_build_branch_name="v4.1.0"
+  export image_build_base_dir="/tmp/tmp${azureResourceUID}"
+
   export acr_account_name=${namePrefix}acr${azureResourceUID}
   export docker_secret_name="${namePrefix}regcred"
 
@@ -61,9 +62,7 @@ initialize() {
   export azureFileShareSecretName="${namePrefix}${azureFileShareSecretNameSuffix}"
   export azureKubernetesNodepoolName="${azureKubernetesNodepoolNamePrefix}${namePrefix}"
   export azureStorageShareName="${namePrefix}-${azureStorageShareNameSuffix}-${azureResourceUID}"
-  export imagePullSecretName="${namePrefix}${imagePullSecretNameSuffix}"
-  export persistentVolumeClaimName="${namePrefix}-${persistentVolumeClaimNameSuffix}-${azureResourceUID}"
-  export persistentVolumeId="${namePrefix}-${persistentVolumeClaimNameSuffix}-${azureResourceUID}"
+  
 }
 
 
@@ -207,11 +206,11 @@ createWebLogicDomain() {
   buildDomainOnPvImage  
 
   # create credentials
-  cd ${base_dir}
+  cd ${image_build_base_dir}
   cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain-credentials
   ./create-weblogic-credentials.sh -u ${weblogicUserName} -p ${weblogicAccountPassword} -d domain1
 
-  cd ${base_dir}
+  cd ${image_build_base_dir}
   cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-kubernetes-secrets
 
   ./create-docker-credentials-secret.sh -s ${docker_secret_name} -e ${dockerEmail} -p ${dockerPassword} -u ${dockerUserName}
@@ -221,12 +220,12 @@ createWebLogicDomain() {
 
   # Mount the file share as a volume
   echo Mounting file share as a volume.
-  kubectl apply -f ./azure-csi-nfs.yaml
-  kubectl apply -f ./pvc.yaml
+  ${KUBERNETES_CLI:-kubectl} apply -f ./azure-csi-nfs.yaml
+  ${KUBERNETES_CLI:-kubectl} apply -f ./pvc.yaml
 
-  kubectl apply -f domain-resource.yaml
-  kubectl apply -f admin-lb.yaml
-  kubectl apply -f cluster-lb.yaml
+  ${KUBERNETES_CLI:-kubectl} apply -f domain-resource.yaml
+  ${KUBERNETES_CLI:-kubectl} apply -f admin-lb.yaml
+  ${KUBERNETES_CLI:-kubectl} apply -f cluster-lb.yaml
 
 }
 
@@ -470,7 +469,7 @@ buildDomainOnPvImage(){
 
 az extension add --name resource-graph
 
-mkdir ${base_dir}
+mkdir ${image_build_base_dir}
 
 ## Build and push Image
 az acr create --resource-group $azureResourceGroupName \
@@ -491,24 +490,24 @@ az acr update --name $acr_account_name --anonymous-pull-enabled
 ## need az acr login in order to push
 az acr login --name $acr_account_name
 
-cd ${base_dir}
-git clone --branch ${BRANCH_NAME} https://github.com/oracle/weblogic-kubernetes-operator.git
-mkdir -p ${base_dir}/sample
-cp -r ${base_dir}/weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain/domain-on-pv/* ${base_dir}/sample
+cd ${image_build_base_dir}
+git clone --branch ${image_build_branch_name} https://github.com/oracle/weblogic-kubernetes-operator.git
+mkdir -p ${image_build_base_dir}/sample
+cp -r ${image_build_base_dir}/weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain/domain-on-pv/* ${image_build_base_dir}/sample
 
-mkdir -p ${base_dir}/sample/wdt-artifacts
+mkdir -p ${image_build_base_dir}/sample/wdt-artifacts
 
-cp -r ${base_dir}/weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain/wdt-artifacts/* ${base_dir}/sample/wdt-artifacts
+cp -r ${image_build_base_dir}/weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain/wdt-artifacts/* ${image_build_base_dir}/sample/wdt-artifacts
 
-cd ${base_dir}/sample/wdt-artifacts
+cd ${image_build_base_dir}/sample/wdt-artifacts
 
 curl -m 120 -fL https://github.com/oracle/weblogic-deploy-tooling/releases/latest/download/weblogic-deploy.zip \
-  -o ${base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
+  -o ${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
 
 curl -m 120 -fL https://github.com/oracle/weblogic-image-tool/releases/latest/download/imagetool.zip \
-  -o ${base_dir}/sample/wdt-artifacts/imagetool.zip
+  -o ${image_build_base_dir}/sample/wdt-artifacts/imagetool.zip
 
-cd ${base_dir}/sample/wdt-artifacts
+cd ${image_build_base_dir}/sample/wdt-artifacts
 
 unzip imagetool.zip
 
@@ -517,20 +516,20 @@ unzip imagetool.zip
 ./imagetool/bin/imagetool.sh cache addInstaller \
   --type wdt \
   --version latest \
-  --path ${base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
+  --path ${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
 
-unzip ${base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
+unzip ${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
 
-rm -f ${base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip
+rm -f ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip
 
-cd ${base_dir}/sample/wdt-artifacts/archives/archive-v1
+cd ${image_build_base_dir}/sample/wdt-artifacts/archives/archive-v1
 
-${base_dir}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.sh add application -archive_file=${base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip -source=wlsdeploy/applications/myapp-v1
+${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.sh add application -archive_file=${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip -source=wlsdeploy/applications/myapp-v1
 
-cd ${base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1
+cd ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1
 
 # --tag wlsgzhcontainer.azurecr.io/wdt-domain-image:WLS-v1 \
-${base_dir}/sample/wdt-artifacts/imagetool/bin/imagetool.sh createAuxImage \
+${image_build_base_dir}/sample/wdt-artifacts/imagetool/bin/imagetool.sh createAuxImage \
   --tag ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1 \
   --wdtModel ./model.10.yaml \
   --wdtVariables ./model.10.properties \
@@ -542,7 +541,24 @@ docker push ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1
 
 
 waitForJobComplete() {
-sleep 30s
+
+waiting_time=0
+max_wait_time=600
+interval=30
+
+while [ $waiting_time -lt $max_wait_time ]; do
+    status=$(kubectl get pod/domain1-admin-server -o=jsonpath='{.status.phase}')
+
+    if [ "$status" == "Running" ]; then
+        echo "Pod is running. Exiting..."
+        break
+    fi
+    
+    echo "Pod is not running. Waiting for $interval seconds..."
+    sleep $interval
+    waiting_time=$((waiting_time + interval))
+done
+
 }
 
 printSummary() {
@@ -603,10 +619,8 @@ installWebLogicOperator
 # Create WebLogic Server Domain
 createWebLogicDomain
 
-# Wait for all the jobs completed
-# todo
+# Wait for all the domain creation completed
 waitForJobComplete
-
 
 # Print summary
 printSummary
