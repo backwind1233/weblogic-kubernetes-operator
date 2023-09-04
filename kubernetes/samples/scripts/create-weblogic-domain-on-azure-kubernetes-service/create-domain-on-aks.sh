@@ -654,10 +654,7 @@ ${image_build_base_dir}/sample/wdt-artifacts/imagetool/bin/imagetool.sh createAu
   --tag ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1 \
   --wdtModel ./model.10.yaml \
   --wdtVariables ./model.10.properties \
-  --wdtArchive ./archive.zip \
-  --wdtModelOnly \
-  --wdtDomainType WLS \
-  --chown oracle:root
+  --wdtArchive ./archive.zip 
 
 ## Push image
 docker push ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1
