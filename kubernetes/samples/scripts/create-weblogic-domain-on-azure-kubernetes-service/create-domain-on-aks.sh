@@ -334,8 +334,6 @@ createWebLogicDomain() {
   # Create WebLogic Server Domain
   echo Creating WebLogic Server domain ${domainUID}
 
-  buildDomainOnPvImage  
-
   # create credentials
   cd ${image_build_base_dir}
   cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain-credentials
@@ -651,13 +649,9 @@ unzip ${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
 rm -f ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip
 cd ${image_build_base_dir}/sample/wdt-artifacts/archives/archive-v1
 
-${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.sh \ 
-  add application \
-  -archive_file=${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip -source=wlsdeploy/applications/myapp-v1
+${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.sh add application -archive_file=${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip -source=wlsdeploy/applications/myapp-v1
 
 cd ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1
-
-
 ${image_build_base_dir}/sample/wdt-artifacts/imagetool/bin/imagetool.sh createAuxImage \
   --tag ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1 \
   --wdtModel ./model.10.yaml \
@@ -757,6 +751,8 @@ createAndConnectToAKSCluster
 
 # Create File Share
 createFileShare
+
+buildDomainOnPvImage  
 
 # Install WebLogic Operator to AKS Cluster
 installWebLogicOperator
