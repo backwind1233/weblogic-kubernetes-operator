@@ -664,6 +664,16 @@ ${image_build_base_dir}/sample/wdt-artifacts/imagetool/bin/imagetool.sh createAu
   --wdtVariables ./model.10.properties \
   --wdtArchive ./archive.zip 
 
+image_name=${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1
+output=$(docker images --format "{{.Repository}}" | grep "^${image_name}$")
+
+if [ -n "$output" ]; then
+  echo "The image '${image_name}' exists locally."
+else
+  echo "The image '${image_name}' does not exist locally."
+  exit 1
+fi
+
 ## Push image
 docker push ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1
 
