@@ -329,6 +329,7 @@ installWebLogicOperator() {
 
 createWebLogicDomain() {
   # Enable the operator to monitor the namespace
+  echo "Enable the operator to monitor the namespace"
   ${KUBERNETES_CLI:-kubectl} label namespace default weblogic-operator=enabled
 
   # Create WebLogic Server Domain
@@ -596,6 +597,7 @@ EOF
 }
 
 buildDomainOnPvImage(){
+echo "build image start----------"
 
 az extension add --name resource-graph
 mkdir ${image_build_base_dir}
@@ -671,6 +673,9 @@ fi
 
 ## Push image
 docker push ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1
+
+## build image success
+echo "build image end----------"
 
 }
 
