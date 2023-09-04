@@ -657,7 +657,7 @@ ${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.s
 
 cd ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1
 
-# --tag wlsgzhcontainer.azurecr.io/wdt-domain-image:WLS-v1 \
+
 ${image_build_base_dir}/sample/wdt-artifacts/imagetool/bin/imagetool.sh createAuxImage \
   --tag ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1 \
   --wdtModel ./model.10.yaml \
