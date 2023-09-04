@@ -182,9 +182,17 @@ initialize() {
   export aksClusterName="${namePrefix}akscluster${azureResourceUID}"
   export storageAccountName="${namePrefix}storage${azureResourceUID}"
 
-  export azureFileShareSecretName="${namePrefix}${azureFileShareSecretNameSuffix}"
   export azureKubernetesNodepoolName="${azureKubernetesNodepoolNamePrefix}${namePrefix}"
   export azureStorageShareName="${namePrefix}-${azureStorageShareNameSuffix}-${azureResourceUID}"
+
+
+  echo "image_build_branch_name=${image_build_branch_name}"
+  echo "aksClusterName=${aksClusterName}"
+  echo "storageAccountName=${storageAccountName}"
+
+  echo "azureResourceGroupName=${azureResourceGroupName}"
+  echo "image_build_base_dir=${image_build_base_dir}"
+  echo "acr_account_name=${acr_account_name}"
   
 }
 
@@ -367,7 +375,7 @@ parameters:
   protocol: nfs
   resourceGroup: ${azureResourceGroupName}
   storageAccount: ${storageAccountName}
-  shareName: ${azureFileShareSecretName}
+  shareName: ${azureStorageShareName}
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
 allowVolumeExpansion: true
