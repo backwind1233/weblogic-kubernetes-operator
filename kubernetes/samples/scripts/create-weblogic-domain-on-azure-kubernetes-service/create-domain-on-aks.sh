@@ -465,7 +465,7 @@ spec:
         #   "sourceModelHome"      - Model file directory in image, default "/auxiliary/models".
         #   "sourceWDTInstallHome" - WDT install directory in image, default "/auxiliary/weblogic-deploy".
         domainCreationImages:
-        - image: "${acr_account_name}.azurecr.io/wdt-domain-image:WLS-LEGACY-v1"
+        - image: "${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1"
           imagePullPolicy: IfNotPresent
           #sourceWDTInstallHome: /auxiliary/weblogic-deploy
           #sourceModelHome: /auxiliary/models
@@ -640,18 +640,18 @@ unzip imagetool.zip
   --path ${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
 
 unzip ${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
-rm -f ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-LEGACY-v1/archive.zip
+rm -f ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip
 cd ${image_build_base_dir}/sample/wdt-artifacts/archives/archive-v1
 
 ${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.sh \ 
   add application \
-  -archive_file=${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-LEGACY-v1/archive.zip -source=wlsdeploy/applications/myapp-v1
+  -archive_file=${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip -source=wlsdeploy/applications/myapp-v1
 
-cd ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-LEGACY-v1
+cd ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1
 
-# --tag wlsgzhcontainer.azurecr.io/wdt-domain-image:WLS-LEGACY-v1 \
+# --tag wlsgzhcontainer.azurecr.io/wdt-domain-image:WLS-v1 \
 ${image_build_base_dir}/sample/wdt-artifacts/imagetool/bin/imagetool.sh createAuxImage \
-  --tag ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-LEGACY-v1 \
+  --tag ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1 \
   --wdtModel ./model.10.yaml \
   --wdtVariables ./model.10.properties \
   --wdtArchive ./archive.zip \
@@ -660,7 +660,7 @@ ${image_build_base_dir}/sample/wdt-artifacts/imagetool/bin/imagetool.sh createAu
   --chown oracle:root
 
 ## Push image
-docker push ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-LEGACY-v1
+docker push ${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1
 
 }
 
