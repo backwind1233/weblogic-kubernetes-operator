@@ -322,7 +322,7 @@ configureStorageAccountNetwork() {
 }
 
 installWebLogicOperator() {
-  echo $(helm version)
+  echo "helm version ="$(helm version)
   helm repo add weblogic-operator https://oracle.github.io/weblogic-kubernetes-operator/charts --force-update
   helm install weblogic-operator weblogic-operator/weblogic-operator
 }
