@@ -83,13 +83,13 @@ envValidate() {
   # Check if Java JDK is installed
   java_version=$(java -version 2>&1)
 
-  # Check if the output contains "java version"
-  if echo "$java_version" | grep -q "java version"; then
-    print_blue "Java JDK is installed. Version:"
-    java -version
+  # "Checking if Java is installed..."
+  if type -p java; then
+      print_blue "Java JDK is installed. Version:"
+      java -version
   else
-    print_red "[ERROR]Java JDK is not installed. Please install Java JDK."
-    exit 1
+      print_red "[ERROR]Java JDK is not installed. Please install Java JDK."
+      exit 1
   fi
 
   # Check if Docker is installed
