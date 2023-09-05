@@ -235,15 +235,42 @@ createAndConnectToAKSCluster() {
   fi
 
   echo Creating Azure Kubernetes Service ${aksClusterName}
-  az aks create --resource-group $azureResourceGroupName \
-  --name $aksClusterName \
-  --vm-set-type VirtualMachineScaleSets \
-  --node-count ${azureKubernetesNodeCount} \
-  --generate-ssh-keys \
-  --nodepool-name ${azureKubernetesNodepoolName} \
-  --node-vm-size ${azureKubernetesNodeVMSize} \
-  --location $azureLocation \
-  --enable-managed-identity
+
+  # Create AKS command
+  create_command="az aks create --resource-group $azureResourceGroupName \
+                    --name $aksClusterName \
+                    --vm-set-type VirtualMachineScaleSets \
+                    --node-count ${azureKubernetesNodeCount} \
+                    --generate-ssh-keys \
+                    --nodepool-name ${azureKubernetesNodepoolName} \
+                    --node-vm-size ${azureKubernetesNodeVMSize} \
+                    --location $azureLocation \
+                    --enable-managed-identity"
+
+  # Maximum number of retries
+  max_retries=3
+  retry_count=0
+
+  while true; do
+      # Execute create AKS command
+      $create_command
+
+      # Check exit status
+      if [ $? -eq 0 ]; then
+          echo "AKS creation successful"
+          break
+      else
+          retry_count=$((retry_count+1))
+          if [ $retry_count -le $max_retries ]; then
+              echo "AKS creation failed. Retrying attempt $retry_count..."
+              # Delete previously created AKS
+              az aks delete --resource-group $azureResourceGroupName --name $aksClusterName --yes --no-wait
+          else
+              echo "Maximum retry limit reached. Unable to create AKS"
+              exit 1
+          fi
+      fi
+  done
 
   # Connect to AKS cluster
   echo Connencting to Azure Kubernetes Service.
@@ -304,7 +331,7 @@ configureStorageAccountNetwork() {
   fi
 
   # get the resource group name of the AKS managed resources
-  local aksMCRGName=$(az aks show --name $aksClusterName --resource-group $azureResourceGroupName -o tsv --query "nodeResourceGroup")
+  local aksMCRGName=$(az aks show --name wlsakscluster1693893269 --resource-group wlsresourcegroup1693893269 -o tsv --query "nodeResourceGroup")
   echo ${aksMCRGName}
 
   # get network name of AKS cluster
