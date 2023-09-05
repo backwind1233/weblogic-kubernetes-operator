@@ -70,6 +70,35 @@ The steps in this section show you how to sign in to the Azure CLI.
 {{% notice info %}} The following sections of the sample instructions will guide you, step-by-step, through the process of setting up a WebLogic cluster on AKS - remaining as close as possible to a native Kubernetes experience. This lets you understand and customize each step. If you wish to have a more automated experience that abstracts some lower level details, you can skip to the [Automation](#automation) section.
 {{% /notice %}}
 
+#### Prepare parameters
+
+```shell
+# Change these parameters as needed for your own environment
+export ORACLE_SSO_PASSWORD=<replace with you oracle password>
+export ORACLE_SSO_EMAIL=<replace with you oracle account email>
+
+# Specify a prefix to name resources, only allow lowercase letters and numbers, between 1 and 7 characters
+export NAME_PREFIX=wls
+export WEBLOGIC_USERNAME=weblogic
+export WEBLOGIC_PASSWORD=Secret123456
+
+# Used to generate resource names.
+export TIMESTAMP=`date +%s`
+export AKS_CLUSTER_NAME="${NAME_PREFIX}aks${TIMESTAMP}"
+export AKS_PERS_RESOURCE_GROUP="${NAME_PREFIX}resourcegroup${TIMESTAMP}"
+export AKS_PERS_LOCATION=eastus
+export AKS_PERS_STORAGE_ACCOUNT_NAME="${NAME_PREFIX}storage${TIMESTAMP}"
+export AKS_PERS_SHARE_NAME="${NAME_PREFIX}-weblogic-${TIMESTAMP}"
+export SECRET_NAME_DOCKER="${NAME_PREFIX}regcred"
+```
+
+#### Create Resource Group
+
+```
+$ az group create --name $AKS_PERS_RESOURCE_GROUP --location $AKS_PERS_LOCATION
+```
+
+
 {{< readfile file="/samples/azure-kubernetes-service/includes/create-aks-cluster-body-02.txt" >}}
 
  **NOTE**: If you run into VM size failure, see [Troubleshooting - Virtual Machine size is not supported]({{< relref "/samples/azure-kubernetes-service/troubleshooting#virtual-machine-size-is-not-supported" >}}).
@@ -141,11 +170,9 @@ The secret domain1-weblogic-credentials has been successfully created in the def
 
 You will use the `kubernetes/samples/scripts/create-kubernetes-secrets/create-docker-credentials-secret.sh` script to create the Docker credentials as a Kubernetes secret. Please run:
 
-```
-# cd kubernetes/samples/scripts/create-kubernetes-secrets
-```
-```shell
-$ ./create-docker-credentials-secret.sh -s ${SECRET_NAME_DOCKER} -e oracleSsoEmail@bar.com -p oracleSsoPassword -u oracleSsoEmail@bar.com
+``` shell
+$ cd kubernetes/samples/scripts/create-kubernetes-secrets
+$ ./create-docker-credentials-secret.sh -s ${SECRET_NAME_DOCKER} -e ${ORACLE_SSO_EMAIL} -p ${ORACLE_SSO_PASSWORD} -u ${ORACLE_SSO_EMAIL}
 ```
 ```
 secret/wlsregcred created

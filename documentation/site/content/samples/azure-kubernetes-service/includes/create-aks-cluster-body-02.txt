@@ -1,27 +1,3 @@
-#### Prepare parameters
-
-```shell
-# Change these parameters as needed for your own environment
-# Specify a prefix to name resources, only allow lowercase letters and numbers, between 1 and 7 characters
-export NAME_PREFIX=wls
-export WEBLOGIC_USERNAME=weblogic
-export WEBLOGIC_PASSWORD=Secret123456
-
-# Used to generate resource names.
-export TIMESTAMP=`date +%s`
-export AKS_CLUSTER_NAME="${NAME_PREFIX}aks${TIMESTAMP}"
-export AKS_PERS_RESOURCE_GROUP="${NAME_PREFIX}resourcegroup${TIMESTAMP}"
-export AKS_PERS_LOCATION=eastus
-export AKS_PERS_STORAGE_ACCOUNT_NAME="${NAME_PREFIX}storage${TIMESTAMP}"
-export AKS_PERS_SHARE_NAME="${NAME_PREFIX}-weblogic-${TIMESTAMP}"
-export SECRET_NAME_DOCKER="${NAME_PREFIX}regcred"
-```
-
-#### Create Resource Group 
-
-```
-$ az group create --name $AKS_PERS_RESOURCE_GROUP --location $AKS_PERS_LOCATION
-```
 
 #### Create the AKS cluster
 
