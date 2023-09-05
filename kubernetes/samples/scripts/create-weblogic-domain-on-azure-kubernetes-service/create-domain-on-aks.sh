@@ -331,8 +331,8 @@ configureStorageAccountNetwork() {
   fi
 
   # get the resource group name of the AKS managed resources
-  local aksMCRGName=$(az aks show --name wlsakscluster1693893269 --resource-group wlsresourcegroup1693893269 -o tsv --query "nodeResourceGroup")
-  echo ${aksMCRGName}
+  local aksMCRGName=$(az aks show --name $aksClusterName --resource-group $azureResourceGroupName -o tsv --query "nodeResourceGroup")
+  echo "aksMCRGName=${aksMCRGName}"
 
   # get network name of AKS cluster
   local aksNetworkName=$(az graph query -q "Resources \
