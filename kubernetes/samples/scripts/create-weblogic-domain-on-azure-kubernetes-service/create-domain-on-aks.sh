@@ -61,11 +61,17 @@ print_red() {
     echo -e "${RED} ${contenxt}${RESET}"
 }
 
+steps=0
+total_steps=11
+function print_step {
+    ((steps++))
+    print_blue "Progress $steps/$total_steps.......... $1"
+}
 #
 # Function to validate the host environment meets the prerequisites.
 # $1 - text of message
 envValidate() {
-  echo "Checking host environment..."
+  print_step "Checking host environment"
   # Check if the user is logged in to Azure CLI
   if az account show >/dev/null 2>&1; then
     print_blue "Logged in to Azure CLI"
@@ -114,6 +120,8 @@ envValidate() {
 }
 
 parametersValidate() {
+  print_step "validating parameters"
+
   # Get the values of environment variables
   email="$dockerEmail"
   password="$dockerPassword"
@@ -166,6 +174,7 @@ parametersValidate() {
 #
 initialize() {
 
+  print_step "initializing"
   source ./create-domain-on-aks-inputs.sh
   source ~/.bashrc
   
@@ -199,6 +208,8 @@ initialize() {
 
 
 createResourceGroup() {
+  print_step "createing resourcegroup"
+
   az extension add --name resource-graph
 
   # Create a resource group
@@ -213,6 +224,9 @@ createResourceGroup() {
 }
 
 createAndConnectToAKSCluster() {
+
+  print_step "createing resourcegroup"
+
   # Create aks cluster
   echo Check if ${aksClusterName} exists
   ret=$(az aks list -g ${azureResourceGroupName} | grep "${aksClusterName}")
@@ -237,6 +251,8 @@ createAndConnectToAKSCluster() {
 }
 
 createFileShare() {
+
+  print_step "createing fileshare"
   # Create a storage account
   echo Check if the storage account ${storageAccountName} exists.
   ret=$(az storage account check-name --name ${storageAccountName})
@@ -323,12 +339,15 @@ configureStorageAccountNetwork() {
 }
 
 installWebLogicOperator() {
+  print_step "installing weblogic kubernetes operator"
   echo "helm version ="$(helm version)
   helm repo add weblogic-operator https://oracle.github.io/weblogic-kubernetes-operator/charts --force-update
   helm install weblogic-operator weblogic-operator/weblogic-operator
 }
 
 createWebLogicDomain() {
+  print_step "creating weblogic domain"
+
   # Enable the operator to monitor the namespace
   echo "Enable the operator to monitor the namespace"
   ${KUBERNETES_CLI:-kubectl} label namespace default weblogic-operator=enabled
@@ -599,6 +618,8 @@ EOF
 }
 
 buildDomainOnPvImage(){
+print_step "build domain image"
+
 echo "build image start----------"
 
 az extension add --name resource-graph
@@ -684,6 +705,8 @@ echo "build image end----------"
 
 waitForJobComplete() {
 
+print_step "waiting job to complete"
+
 waiting_time=0
 max_wait_time=900
 interval=60
@@ -693,9 +716,11 @@ sleep $interval
 
 while [ $waiting_time -lt $max_wait_time ]; do
     status=$(kubectl get pod/${domainUID}-admin-server -o=jsonpath='{.status.phase}')
-
+    ready=$(kubectl get pod/${domainUID}-admin-server -o=jsonpath='{.ready.phase}')
     if [ "$status" == "Running" ]; then
-        echo "Pod is running. Exiting..."
+        if [ "$ready" == "1/1" ]; then
+          echo "Pod is running. Exiting..."
+        fi
         break
     fi
     
@@ -707,6 +732,8 @@ done
 }
 
 printSummary() {
+
+  print_step "print summary"
 
   regionJsonExcerpt=$(az group list --query "[?name=='${azureResourceGroupName}']" | grep location)
   tokens=($(
@@ -749,6 +776,7 @@ initialize
 # Validate the host environment meets the prerequisites.
 envValidate
 
+# Validate the parameters
 parametersValidate
 
 # Create resource group
@@ -763,6 +791,7 @@ createFileShare
 # Install WebLogic Operator to AKS Cluster
 installWebLogicOperator
 
+# Build domain image
 buildDomainOnPvImage  
 
 # Create WebLogic Server Domain
