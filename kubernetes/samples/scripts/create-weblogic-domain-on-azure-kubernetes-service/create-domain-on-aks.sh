@@ -298,7 +298,7 @@ configureStorageAccountNetwork() {
     | where resourceGroup  =~ '${aksMCRGName}' \
     | project name = name" --query "data[0].name"  -o tsv)
 
-  echo ${aksNetworkName}
+  echo "aksNetworkName="${aksNetworkName}
 
   # get subnet name of AKS agent pool
   local aksSubnetName=$(az network vnet subnet list --resource-group ${aksMCRGName} --vnet-name ${aksNetworkName} -o tsv --query "[*].name")
@@ -351,7 +351,7 @@ createWebLogicDomain() {
   generateYamls
 
   # Mount the file share as a volume
-  echo Mounting file share as a volume.
+  echo "Mounting file share as a volume..."
   ${KUBERNETES_CLI:-kubectl} apply -f ./azure-csi-nfs.yaml
   ${KUBERNETES_CLI:-kubectl} apply -f ./pvc.yaml
 
@@ -363,6 +363,7 @@ createWebLogicDomain() {
 
 generateYamls() {
   
+echo "generating yamls..."
 cat >azure-csi-nfs.yaml <<EOF
 # Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
@@ -760,10 +761,10 @@ createAndConnectToAKSCluster
 # Create File Share
 createFileShare
 
-buildDomainOnPvImage  
-
 # Install WebLogic Operator to AKS Cluster
 installWebLogicOperator
+
+buildDomainOnPvImage  
 
 # Create WebLogic Server Domain
 createWebLogicDomain
