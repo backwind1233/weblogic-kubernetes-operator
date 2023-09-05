@@ -10,9 +10,17 @@ This sample demonstrates how to use the [WebLogic Kubernetes Operator](https://o
 #### Contents
 
  - [Prerequisites](#prerequisites)
+ - [Prepare Parameters](#prepare-parameters)
+ - [Create Resource Group](#create-resource-group)
  - [Create an AKS cluster](#create-the-aks-cluster)
+ - [Create and Configure Storage](#create-storage)
+   - [Create an Azure Storage account and NFS share](##create-an-azure-storage-account-and-nfs-share)
+   - [Create SC and PVC](#create-sc-and-pvc)
  - [Install WebLogic Kubernetes Operator](#install-weblogic-kubernetes-operator-into-the-aks-cluster)
  - [Create WebLogic domain](#create-weblogic-domain)
+   - [Create secrets](#create-secrets)
+   - [Create WebLogic Domain](#create-weblogic-domain-1)
+   - [Create LoadBalancer](#create-loadbalancer)
  - [Automation](#automation)
  - [Deploy sample application](#deploy-sample-application)
  - [Validate NFS volume](#validate-nfs-volume)
@@ -77,8 +85,6 @@ Kubernetes Operators use [Helm](https://helm.sh/) to manage Kubernetes applicati
 
 ```shell
 $ helm repo add weblogic-operator https://oracle.github.io/weblogic-kubernetes-operator/charts --force-update
-```
-```shell
 $ helm install weblogic-operator weblogic-operator/weblogic-operator
 ```
 
@@ -124,7 +130,7 @@ You will use the `kubernetes/samples/scripts/create-weblogic-domain-credentials/
 # cd kubernetes/samples/scripts/create-weblogic-domain-credentials
 ```
 ```shell
-$ ./create-weblogic-credentials.sh -u <WebLogic admin username> -p <WebLogic admin password> -d domain1
+$ ./create-weblogic-credentials.sh -u ${WEBLOGIC_USERNAME} -p ${WEBLOGIC_PASSWORD} -d domain1
 ```
 ```
 secret/domain1-weblogic-credentials created
@@ -132,19 +138,9 @@ secret/domain1-weblogic-credentials labeled
 The secret domain1-weblogic-credentials has been successfully created in the default namespace.
 ```
 
-Notes:
-- Replace `<WebLogic admin username>` and `<WebLogic admin password>` with a WebLogic administrator username and password of your choice.
-- The password should be at least eight characters long and include at least one digit.
-- Remember what you specified. These credentials may be needed again later.
 
 You will use the `kubernetes/samples/scripts/create-kubernetes-secrets/create-docker-credentials-secret.sh` script to create the Docker credentials as a Kubernetes secret. Please run:
 
-```shell
-# Please change imagePullSecretNameSuffix if you change pre-defined value "regcred" before generating the configuration files.
-```
-```shell
-$ export SECRET_NAME_DOCKER="${NAME_PREFIX}regcred"
-```
 ```
 # cd kubernetes/samples/scripts/create-kubernetes-secrets
 ```
@@ -377,8 +373,8 @@ For input values, you can edit `kubernetes/samples/scripts/create-weblogic-domai
 | `dockerPassword` | `yourDockerPassword`| Password for Oracle SSO account, used to pull the WebLogic Server Docker image, in clear text. |
 | `dockerUserName` | `yourDockerId` | The same value as `dockerEmail`.  |
 | `namePrefix` | `wls` | Alphanumeric value used as a disambiguation prefix for several Kubernetes resources. |
-| `weblogicUserName` | `<WebLogic admin username>` | Enter your choice for a WebLogic administration username. |
-| `weblogicAccountPassword` | `<WebLogic admin password>` | Enter your choice for a WebLogic administration password. It must be at least eight characters long and contain at least one digit. |
+| `weblogicUserName` | `${WEBLOGIC_USERNAME}` | Enter your choice for a WebLogic administration username. |
+| `weblogicAccountPassword` | `${WEBLOGIC_PASSWORD}` | Enter your choice for a WebLogic administration password. It must be at least eight characters long and contain at least one digit. |
 
 If you don't want to change the other parameters, you can use the default values.
 Please make sure no extra whitespaces are added!
@@ -434,11 +430,11 @@ adding: index.jsp(in = 1001) (out= 459)(deflated 54%)
 ```
 
 Now, you are able to deploy the sample application in `/tmp/testwebapp/testwebapp.war` to the cluster. This sample uses WLS RESTful API [/management/weblogic/latest/edit/appDeployments](https://docs.oracle.com/en/middleware/standalone/weblogic-server/14.1.1.0/wlrer/op-management-weblogic-version-edit-appdeployments-x-operations-1.html) to deploy the sample application.
-Replace `<WebLogic admin username>` and `<WebLogic admin password>` with the values you specified in [Create secrets](#create-secrets) or [Automation](#automation):
+Replace `${WEBLOGIC_USERNAME}` and `${WEBLOGIC_PASSWORD}` with the values you specified in [Create secrets](#create-secrets) or [Automation](#automation):
 
 ```bash
 $ ADMIN_SERVER_IP=$(kubectl get svc domain1-admin-server-external-lb -o=jsonpath='{.status.loadBalancer.ingress[0].ip}')
-$ curl --user <WebLogic admin username>:<WebLogic admin password> -H X-Requested-By:MyClient  -H Accept:application/json -s -v \
+$ curl --user ${WEBLOGIC_USERNAME}:${WEBLOGIC_PASSWORD} -H X-Requested-By:MyClient  -H Accept:application/json -s -v \
   -H Content-Type:multipart/form-data  \
   -F "model={
         name:    'testwebapp',

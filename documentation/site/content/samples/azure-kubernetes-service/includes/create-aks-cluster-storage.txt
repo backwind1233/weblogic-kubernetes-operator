@@ -20,8 +20,6 @@ You will dynamically create and use a persistent volume with Azure Files NFS sha
     | `default-action` | `Deny` | For security, we suggest that you deny access by default and choose to allow access from the AKS cluster network. |
 
     ```shell
-    # Change the value as needed for your own environment
-    $ export AKS_PERS_STORAGE_ACCOUNT_NAME="${NAME_PREFIX}storage${TIMESTAMP}"
 
     $ az storage account create \
         --resource-group $AKS_PERS_RESOURCE_GROUP \
@@ -44,8 +42,7 @@ You will dynamically create and use a persistent volume with Azure Files NFS sha
     The following command creates an NFS share with 100GiB:
 
     ```shell
-    # Change value as needed for your own environment
-    $ export AKS_PERS_SHARE_NAME="${NAME_PREFIX}-weblogic-${TIMESTAMP}"
+    
     # Create NFS file share
     $ az storage share-rm create \
         --resource-group $AKS_PERS_RESOURCE_GROUP \
@@ -184,7 +181,7 @@ You will dynamically create and use a persistent volume with Azure Files NFS sha
     ]
     ```
 
-##### Create Storage Class
+##### Create SC and PVC
 
 ##### Generated configuration files
 Use below command to generate configuration files.
