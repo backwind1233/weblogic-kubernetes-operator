@@ -187,7 +187,7 @@ You will dynamically create and use a persistent volume with Azure Files NFS sha
 Use below command to generate configuration files.
 
 ```shell
-cat >azure-csi-nfs.yaml <<EOF
+cat >azure-csi-nfs-${TIMESTAMP}.yaml <<EOF
 # Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
@@ -207,11 +207,11 @@ allowVolumeExpansion: true
 
 EOF
 
-cat >pvc.yaml <<EOF
+cat >pvc-${TIMESTAMP}.yaml <<EOF
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: wls-azurefile-${azureResourceUID}
+  name: wls-azurefile-${TIMESTAMP}
 spec:
   accessModes:
     - ReadWriteMany
@@ -226,25 +226,20 @@ EOF
 Use the `kubectl` command to create the Storage Class and persistent volume claim to the `default` namespace.
 
 ```shell
-$ kubectl apply -f ~/azure/weblogic-on-aks/azure-csi-nfs.yaml
-$ kubectl apply -f ~/azure/weblogic-on-aks/pvc.yaml
+$ kubectl apply -f azure-csi-nfs-${TIMESTAMP}.yaml
+$ kubectl apply -f pvc-${TIMESTAMP}.yaml
 ```
 
 Use the following command to verify:
 
 ```shell
-$ kubectl get sc
+$ kubectl get pvc
 ```
 
 Example output:
 
 ```shell
-$ kubectl get sc
-NAME                    PROVISIONER          RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
-azurefile               file.csi.azure.com   Delete          Immediate              true                   83s
-azurefile-csi           file.csi.azure.com   Delete          Immediate              true                   83s
-azurefile-csi-nfs       file.csi.azure.com   Delete          Immediate              true                   50s
-....
+$ kubectl get pvc
+NAME                       STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS        AGE
+wls-azurefile-1693900684   Bound    pvc-1f615766-0f21-4c88-80e1-93c9bdabb3eb   5Gi        RWX            azurefile-csi-nfs   46s
 ```
-
-**NOTE**: Carefully inspect the output and verify it matches the above. `ACCESS MODES`, `CLAIM`, and `STORAGECLASS` are vital.
