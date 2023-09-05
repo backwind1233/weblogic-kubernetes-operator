@@ -171,7 +171,7 @@ initialize() {
   
   # Generate Azure resource name
 
-  export image_build_branch_name="v4.1.0"
+  export image_build_branch_name="v4.1.1"
   export image_build_base_dir="/tmp/tmp${azureResourceUID}"
 
   export acr_account_name=${namePrefix}acr${azureResourceUID}
