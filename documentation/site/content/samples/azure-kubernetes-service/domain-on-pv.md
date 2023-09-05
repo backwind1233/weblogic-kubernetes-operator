@@ -11,6 +11,7 @@ This sample demonstrates how to use the [WebLogic Kubernetes Operator](https://o
 
  - [Prerequisites](#prerequisites)
  - [Prepare Parameters](#prepare-parameters)
+ - [Clone WKO repository](#clone-wko-repository)
  - [Create Resource Group](#create-resource-group)
  - [Create an AKS cluster](#create-the-aks-cluster)
  - [Create and Configure Storage](#create-storage)
@@ -31,14 +32,6 @@ This sample demonstrates how to use the [WebLogic Kubernetes Operator](https://o
 {{< readfile file="/samples/azure-kubernetes-service/includes/prerequisites-01.txt" >}}
 
 {{< readfile file="/samples/azure-kubernetes-service/includes/create-aks-cluster-body-01.txt" >}}
-
-##### Clone WebLogic Kubernetes Operator repository
-
-Clone the [WebLogic Kubernetes Operator repository](https://github.com/oracle/weblogic-kubernetes-operator) to your machine. You will use several scripts in this repository to create a WebLogic domain. This sample was tested with v4.1.0, but should work with the latest release.
-
-```shell
-$ git clone --branch v{{< latestVersion >}} https://github.com/oracle/weblogic-kubernetes-operator.git
-```
 
 ##### Sign in with Azure CLI
 
@@ -74,14 +67,16 @@ The steps in this section show you how to sign in to the Azure CLI.
 
 ```shell
 # Change these parameters as needed for your own environment
-export ORACLE_SSO_PASSWORD=<replace with you oracle password>
-export ORACLE_SSO_EMAIL=<replace with you oracle account email>
-
+export ORACLE_SSO_PASSWORD=<replace with your oracle password>
+export ORACLE_SSO_EMAIL=<replace with your oracle account email>
+# An example of Domain_Creation_Image_URL: xxx.azurecr.io/wdt-domain-image:WLS-v1
+export Domain_Creation_Image_URL=<replace with your domain creation image url>
 # Specify a prefix to name resources, only allow lowercase letters and numbers, between 1 and 7 characters
-export NAME_PREFIX=wls
+export BASE_DIR=~
+export namePrefix=wls
 export WEBLOGIC_USERNAME=weblogic
 export WEBLOGIC_PASSWORD=Secret123456
-
+export domainUID=domain1
 # Used to generate resource names.
 export TIMESTAMP=`date +%s`
 export AKS_CLUSTER_NAME="${NAME_PREFIX}aks${TIMESTAMP}"
@@ -90,6 +85,16 @@ export AKS_PERS_LOCATION=eastus
 export AKS_PERS_STORAGE_ACCOUNT_NAME="${NAME_PREFIX}storage${TIMESTAMP}"
 export AKS_PERS_SHARE_NAME="${NAME_PREFIX}-weblogic-${TIMESTAMP}"
 export SECRET_NAME_DOCKER="${NAME_PREFIX}regcred"
+```
+
+#### Clone WKO repository
+
+Clone the [WebLogic Kubernetes Operator repository](https://github.com/oracle/weblogic-kubernetes-operator) to your machine. You will use several scripts in this repository to create a WebLogic domain. This sample was tested with v4.1.0, but should work with the latest release.
+
+```shell
+$ cd $BASE_DIR
+$ git clone --branch v{{< latestVersion >}} https://github.com/oracle/weblogic-kubernetes-operator.git
+$ cd $BASE_DIR/weblogic-kubernetes-operator
 ```
 
 #### Create Resource Group
