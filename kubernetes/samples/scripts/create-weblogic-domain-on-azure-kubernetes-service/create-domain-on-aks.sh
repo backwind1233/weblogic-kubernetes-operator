@@ -738,7 +738,8 @@ waiting_time=0
 max_wait_time=900
 interval=60
 
-echo "Wait Job to be completed.Waiting for $interval seconds..."
+echo "Waiting Job to be completed."
+echo "Waiting for $interval seconds..."
 sleep $interval
 
 while [ $waiting_time -lt $max_wait_time ]; do
