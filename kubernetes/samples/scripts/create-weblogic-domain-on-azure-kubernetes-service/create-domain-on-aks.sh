@@ -184,6 +184,7 @@ initialize() {
 
   export azureKubernetesNodepoolName="${azureKubernetesNodepoolNamePrefix}${namePrefix}"
   export azureStorageShareName="${namePrefix}-${azureStorageShareNameSuffix}-${azureResourceUID}"
+  export domainUID="domain1"
 
 
   echo "image_build_branch_name=${image_build_branch_name}"
@@ -193,6 +194,7 @@ initialize() {
   echo "azureResourceGroupName=${azureResourceGroupName}"
   echo "image_build_base_dir=${image_build_base_dir}"
   echo "acr_account_name=${acr_account_name}"
+  
   
 }
 
@@ -338,7 +340,7 @@ createWebLogicDomain() {
   # create credentials
   cd ${image_build_base_dir}
   cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-weblogic-domain-credentials
-  ./create-weblogic-credentials.sh -u ${weblogicUserName} -p ${weblogicAccountPassword} -d domain1
+  ./create-weblogic-credentials.sh -u ${weblogicUserName} -p ${weblogicAccountPassword} -d ${domainUID}
 
   cd ${image_build_base_dir}
   cd weblogic-kubernetes-operator/kubernetes/samples/scripts/create-kubernetes-secrets
@@ -406,10 +408,10 @@ cat >domain-resource.yaml <<EOF
 apiVersion: "weblogic.oracle/v9"
 kind: Domain
 metadata:
-  name: domain1
+  name: ${domainUID}
   namespace: default
   labels:
-    weblogic.domainUID: domain1
+    weblogic.domainUID: ${domainUID}
 
 spec:
   # Set to 'PersistentVolume' to indicate 'Domain on PV'.
@@ -417,7 +419,7 @@ spec:
 
   # The WebLogic Domain Home, this must be a location within
   # the persistent volume for 'Domain on PV' domains.
-  domainHome: /shared/domains/domain1
+  domainHome: /shared/domains/${domainUID}
 
   # The WebLogic Server image that the Operator uses to start the domain
   # **NOTE**:
@@ -439,7 +441,7 @@ spec:
   # Identify which Secret contains the WebLogic Admin credentials,
   # the secret must contain 'username' and 'password' fields.
   webLogicCredentialsSecret:
-    name: domain1-weblogic-credentials
+    name: ${domainUID}-weblogic-credentials
 
   # Whether to include the WebLogic Server stdout in the pod's stdout, default is true
   includeServerOutInPodLog: true
@@ -449,7 +451,7 @@ spec:
 
   # The location for domain log, server logs, server out, introspector out, and Node Manager log files
   # see also 'logHomeEnabled', 'volumes', and 'volumeMounts'.
-  #logHome: /shared/logs/sample-domain1
+  #logHome: /shared/logs/sample-${domainUID}
   #
   # Set which WebLogic Servers the Operator will start
   # - "Never" will not start any server in the domain
@@ -478,12 +480,12 @@ spec:
           #sourceModelHome: /auxiliary/models
 
         # Optional configmap for additional models and variable files
-        #domainCreationConfigMap: sample-domain1-wdt-config-map
+        #domainCreationConfigMap: sample-${domainUID}-wdt-config-map
 
     # Secrets that are referenced by model yaml macros
     # (the model yaml in the optional configMap or in the image)
     #secrets:
-    #- sample-domain1-datasource-secret
+    #- sample-${domainUID}-datasource-secret
 
   # Settings for all server pods in the domain including the introspector job pod
   serverPod:
@@ -492,7 +494,7 @@ spec:
     #   to set the WebLogic domain name
     env:
     - name: CUSTOM_DOMAIN_NAME
-      value: "domain1"
+      value: ${domainUID}
     - name: JAVA_OPTIONS
       value: "-Dweblogic.StdoutDebugEnabled=false"
     - name: USER_MEM_ARGS
@@ -524,7 +526,7 @@ spec:
 
   # The name of each Cluster resource
   clusters:
-  - name: sample-domain1-cluster-1
+  - name: sample-${domainUID}-cluster-1
 
   # Change the restartVersion to force the introspector job to rerun
   # to force a roll of your domain's WebLogic Server pods.
@@ -539,12 +541,12 @@ spec:
 apiVersion: "weblogic.oracle/v1"
 kind: Cluster
 metadata:
-  name: sample-domain1-cluster-1
+  name: sample-${domainUID}-cluster-1
   # Update this with the namespace your domain will run in:
   namespace: default
   labels:
     # Update this with the "domainUID" of your domain:
-    weblogic.domainUID: domain1
+    weblogic.domainUID: ${domainUID}
 spec:
   # This must match a cluster name that is  specified in the WebLogic configuration
   clusterName: cluster-1
@@ -558,7 +560,7 @@ cat >admin-lb.yaml <<EOF
 apiVersion: v1
 kind: Service
 metadata:
-  name: domain1-admin-server-external-lb
+  name: ${domainUID}-admin-server-external-lb
   namespace: default
 spec:
   ports:
@@ -567,7 +569,7 @@ spec:
     protocol: TCP
     targetPort: 7001
   selector:
-    weblogic.domainUID: domain1
+    weblogic.domainUID: ${domainUID}
     weblogic.serverName: admin-server
   sessionAffinity: None
   type: LoadBalancer
@@ -578,7 +580,7 @@ cat >cluster-lb.yaml <<EOF
 apiVersion: v1
 kind: Service
 metadata:
-  name: domain1-cluster-1-lb
+  name: ${domainUID}-cluster-1-lb
   namespace: default
 spec:
   ports:
@@ -587,7 +589,7 @@ spec:
     protocol: TCP
     targetPort: 8001
   selector:
-    weblogic.domainUID: domain1
+    weblogic.domainUID: ${domainUID}
     weblogic.clusterName: cluster-1
   sessionAffinity: None
   type: LoadBalancer
@@ -690,7 +692,7 @@ echo "Wait Job to be completed.Waiting for $interval seconds..."
 sleep $interval
 
 while [ $waiting_time -lt $max_wait_time ]; do
-    status=$(kubectl get pod/domain1-admin-server -o=jsonpath='{.status.phase}')
+    status=$(kubectl get pod/${domainUID}-admin-server -o=jsonpath='{.status.phase}')
 
     if [ "$status" == "Running" ]; then
         echo "Pod is running. Exiting..."
@@ -725,11 +727,11 @@ printSummary() {
   echo "  az aks get-credentials --resource-group ${azureResourceGroupName} --name ${aksClusterName}"
   echo ""
 
-  adminLbIP=$(${KUBERNETES_CLI:-kubectl} get svc domain1-admin-server-external-lb --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  adminLbIP=$(${KUBERNETES_CLI:-kubectl} get svc ${domainUID}-admin-server-external-lb --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
   echo "Administration console access is available at http://${adminLbIP}:7001/console"
   
   echo ""
-  clusterLbIP=$(${KUBERNETES_CLI:-kubectl} get svc domain1-cluster-1-lb --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  clusterLbIP=$(${KUBERNETES_CLI:-kubectl} get svc ${domainUID}-cluster-1-lb --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
   echo "Cluster external ip is ${clusterLbIP}, you can access http://${clusterLbIP}:8001/myapp_war/index.jsp"
   
   echo "Completed"
