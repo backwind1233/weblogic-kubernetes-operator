@@ -26,7 +26,6 @@
 script="${BASH_SOURCE[0]}"
 scriptDir="$(cd "$(dirname "${script}")" && pwd)"
 
-
 if [ -z "${azureResourceUID}" ]; then
   azureResourceUID=$(date +%s)
 fi
