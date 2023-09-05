@@ -225,7 +225,7 @@ createResourceGroup() {
 
 createAndConnectToAKSCluster() {
 
-  print_step "createing resourcegroup"
+  print_step "creating AKS"
 
   # Create aks cluster
   echo Check if ${aksClusterName} exists
