@@ -657,6 +657,7 @@ az acr create --resource-group $azureResourceGroupName \
   --name ${acr_account_name} \
   --sku Standard
 
+echo "enable admin ......"
 az acr update -n ${acr_account_name} --admin-enabled true
 
 export LOGIN_SERVER=$(az acr show -n $acr_account_name --query 'loginServer' -o tsv)
@@ -666,6 +667,7 @@ export PASSWORD=$(az acr credential show -n $acr_account_name --query 'passwords
 sudo docker login $LOGIN_SERVER -u $USER_NAME -p $PASSWORD
 
 # make public access
+echo make acr public access
 az acr update --name $acr_account_name --anonymous-pull-enabled
 
 ## need az acr login in order to push
