@@ -150,7 +150,7 @@ spec:
   # This must match a cluster name that is  specified in the WebLogic configuration
   clusterName: cluster-1
   # The number of managed servers to start for this cluster
-  replicas: 3
+  replicas: 2
 
 
 EOF
