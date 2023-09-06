@@ -73,7 +73,7 @@ spec:
         #   "sourceModelHome"      - Model file directory in image, default "/auxiliary/models".
         #   "sourceWDTInstallHome" - WDT install directory in image, default "/auxiliary/weblogic-deploy".
         domainCreationImages:
-        - image: "{Domain_Creation_Image_URL}"
+        - image: "${Domain_Creation_Image_URL}"
           imagePullPolicy: IfNotPresent
           #sourceWDTInstallHome: /auxiliary/weblogic-deploy
           #sourceModelHome: /auxiliary/models
