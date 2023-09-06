@@ -14,11 +14,11 @@ export dockerEmail=docker-email
 # Oracle SSO account password, used to pull the WebLogic Server image.
 export dockerPassword=docker-password
 
-# Name of weblogic user.
+# Name of weblogic user account.
 export weblogicUserName=weblogic
 
-# Password for WebLogic account.
-export weblogicAccountPassword=Secret123456!
+# Password for WebLogic user account.
+export weblogicAccountPassword=Secret123456
 
 # Specify where to create azure resource.
 export azureLocation=eastus
