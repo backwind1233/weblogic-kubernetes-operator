@@ -94,12 +94,13 @@ Clone the [WebLogic Kubernetes Operator repository](https://github.com/oracle/we
 ```shell
 $ cd $BASE_DIR
 $ git clone --branch v{{< latestVersion >}} https://github.com/oracle/weblogic-kubernetes-operator.git
-$ cd $BASE_DIR/weblogic-kubernetes-operator
+
 ```
 
 #### Create Resource Group
 
 ```
+$ cd $BASE_DIR/weblogic-kubernetes-operator
 $ az group create --name $AKS_PERS_RESOURCE_GROUP --location $AKS_PERS_LOCATION
 ```
 
