@@ -1,39 +1,3 @@
-cat >azure-csi-nfs.yaml <<EOF
-# Copyright (c) 2018, 2021, Oracle and/or its affiliates.
-# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
-
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: azurefile-csi-nfs
-provisioner: file.csi.azure.com
-parameters:
-  protocol: nfs
-  resourceGroup: ${azureResourceGroupName}
-  storageAccount: ${storageAccountName}
-  shareName: ${azureFileShareSecretName}
-reclaimPolicy: Delete
-volumeBindingMode: Immediate
-allowVolumeExpansion: true
-
-EOF
-
-cat >pvc.yaml <<EOF
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: wls-azurefile-${azureResourceUID}
-spec:
-  accessModes:
-    - ReadWriteMany
-  storageClassName: azurefile-csi-nfs
-  resources:
-    requests:
-      storage: 5Gi
-
-EOF
-
-
 cat >domain-resource.yaml <<EOF
 # Copyright (c) 2023, Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -43,10 +7,10 @@ cat >domain-resource.yaml <<EOF
 apiVersion: "weblogic.oracle/v9"
 kind: Domain
 metadata:
-  name: domain1
+  name: ${domainUID}
   namespace: default
   labels:
-    weblogic.domainUID: domain1
+    weblogic.domainUID: ${domainUID}
 
 spec:
   # Set to 'PersistentVolume' to indicate 'Domain on PV'.
@@ -54,7 +18,7 @@ spec:
 
   # The WebLogic Domain Home, this must be a location within
   # the persistent volume for 'Domain on PV' domains.
-  domainHome: /shared/domains/domain1
+  domainHome: /shared/domains/${domainUID}
 
   # The WebLogic Server image that the Operator uses to start the domain
   # **NOTE**:
@@ -76,7 +40,7 @@ spec:
   # Identify which Secret contains the WebLogic Admin credentials,
   # the secret must contain 'username' and 'password' fields.
   webLogicCredentialsSecret:
-    name: domain1-weblogic-credentials
+    name: ${domainUID}-weblogic-credentials
 
   # Whether to include the WebLogic Server stdout in the pod's stdout, default is true
   includeServerOutInPodLog: true
@@ -86,7 +50,7 @@ spec:
 
   # The location for domain log, server logs, server out, introspector out, and Node Manager log files
   # see also 'logHomeEnabled', 'volumes', and 'volumeMounts'.
-  #logHome: /shared/logs/sample-domain1
+  #logHome: /shared/logs/sample-${domainUID}
   #
   # Set which WebLogic Servers the Operator will start
   # - "Never" will not start any server in the domain
@@ -100,27 +64,27 @@ spec:
 
       # Settings for domain home on PV.
       domain:
-         # Valid model domain types are 'WLS', and 'JRF', default is 'JRF'
-         domainType: WLS
+        # Valid model domain types are 'WLS', and 'JRF', default is 'JRF'
+        domainType: WLS
 
-         # Domain creation image(s) containing WDT model, archives, and install.
-         #   "image"                - Image location
-         #   "imagePullPolicy"      - Pull policy, default "IfNotPresent"
-         #   "sourceModelHome"      - Model file directory in image, default "/auxiliary/models".
-         #   "sourceWDTInstallHome" - WDT install directory in image, default "/auxiliary/weblogic-deploy".
-         domainCreationImages:
-         - image: "${acr_account_name}.azurecr.io/wdt-domain-image:WLS-v1"
-           imagePullPolicy: IfNotPresent
-           #sourceWDTInstallHome: /auxiliary/weblogic-deploy
-           #sourceModelHome: /auxiliary/models
+        # Domain creation image(s) containing WDT model, archives, and install.
+        #   "image"                - Image location
+        #   "imagePullPolicy"      - Pull policy, default "IfNotPresent"
+        #   "sourceModelHome"      - Model file directory in image, default "/auxiliary/models".
+        #   "sourceWDTInstallHome" - WDT install directory in image, default "/auxiliary/weblogic-deploy".
+        domainCreationImages:
+        - image: "{Domain_Creation_Image_URL}"
+          imagePullPolicy: IfNotPresent
+          #sourceWDTInstallHome: /auxiliary/weblogic-deploy
+          #sourceModelHome: /auxiliary/models
 
-         # Optional configmap for additional models and variable files
-         #domainCreationConfigMap: sample-domain1-wdt-config-map
+        # Optional configmap for additional models and variable files
+        #domainCreationConfigMap: sample-${domainUID}-wdt-config-map
 
     # Secrets that are referenced by model yaml macros
     # (the model yaml in the optional configMap or in the image)
     #secrets:
-    #- sample-domain1-datasource-secret
+    #- sample-${domainUID}-datasource-secret
 
   # Settings for all server pods in the domain including the introspector job pod
   serverPod:
@@ -129,7 +93,7 @@ spec:
     #   to set the WebLogic domain name
     env:
     - name: CUSTOM_DOMAIN_NAME
-      value: "domain1"
+      value: ${domainUID}
     - name: JAVA_OPTIONS
       value: "-Dweblogic.StdoutDebugEnabled=false"
     - name: USER_MEM_ARGS
@@ -143,7 +107,7 @@ spec:
     volumes:
     - name: weblogic-domain-storage-volume
       persistentVolumeClaim:
-        claimName: wls-azurefile-${azureResourceUID}
+        claimName: wls-azurefile-${TIMESTAMP}
     volumeMounts:
     - mountPath: /shared
       name: weblogic-domain-storage-volume
@@ -161,7 +125,7 @@ spec:
 
   # The name of each Cluster resource
   clusters:
-  - name: sample-domain1-cluster-1
+  - name: sample-${domainUID}-cluster-1
 
   # Change the restartVersion to force the introspector job to rerun
   # to force a roll of your domain's WebLogic Server pods.
@@ -176,12 +140,12 @@ spec:
 apiVersion: "weblogic.oracle/v1"
 kind: Cluster
 metadata:
-  name: sample-domain1-cluster-1
+  name: sample-${domainUID}-cluster-1
   # Update this with the namespace your domain will run in:
   namespace: default
   labels:
     # Update this with the "domainUID" of your domain:
-    weblogic.domainUID: domain1
+    weblogic.domainUID: ${domainUID}
 spec:
   # This must match a cluster name that is  specified in the WebLogic configuration
   clusterName: cluster-1
@@ -195,7 +159,7 @@ cat >admin-lb.yaml <<EOF
 apiVersion: v1
 kind: Service
 metadata:
-  name: domain1-admin-server-external-lb
+  name: ${domainUID}-admin-server-external-lb
   namespace: default
 spec:
   ports:
@@ -204,7 +168,7 @@ spec:
     protocol: TCP
     targetPort: 7001
   selector:
-    weblogic.domainUID: domain1
+    weblogic.domainUID: ${domainUID}
     weblogic.serverName: admin-server
   sessionAffinity: None
   type: LoadBalancer
@@ -215,7 +179,7 @@ cat >cluster-lb.yaml <<EOF
 apiVersion: v1
 kind: Service
 metadata:
-  name: domain1-cluster-1-lb
+  name: ${domainUID}-cluster-1-lb
   namespace: default
 spec:
   ports:
@@ -224,7 +188,7 @@ spec:
     protocol: TCP
     targetPort: 8001
   selector:
-    weblogic.domainUID: domain1
+    weblogic.domainUID: ${domainUID}
     weblogic.clusterName: cluster-1
   sessionAffinity: None
   type: LoadBalancer
