@@ -316,7 +316,7 @@ createFileShare() {
   --resource-group $azureResourceGroupName \
   --storage-account $storageAccountName \
   --name ${azureStorageShareName} \
-  --enabled-protocol NFS \
+  --enabled-protocol SMB \
   --root-squash NoRootSquash \
   --quota 100
 
