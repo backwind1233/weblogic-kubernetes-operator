@@ -422,22 +422,27 @@ generateYamls() {
   
 echo "generating yamls..."
 cat >azure-csi-nfs.yaml <<EOF
-# Copyright (c) 2018, 2021, Oracle and/or its affiliates.
-# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
-
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: azurefile-csi-nfs
+  name: azurefile-csi-smb
 provisioner: file.csi.azure.com
+allowVolumeExpansion: true
 parameters:
-  protocol: nfs
+  protocol: smb
   resourceGroup: ${azureResourceGroupName}
   storageAccount: ${storageAccountName}
   shareName: ${azureStorageShareName}
-reclaimPolicy: Delete
-volumeBindingMode: Immediate
-allowVolumeExpansion: true
+mountOptions:
+ - dir_mode=0777
+ - file_mode=0777
+ - uid=0
+ - gid=0
+ - mfsymlinks
+ - nobrl
+ - cache=none
+parameters:
+  skuName: Premium_LRS
 
 EOF
 
