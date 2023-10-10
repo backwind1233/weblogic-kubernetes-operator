@@ -454,7 +454,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteMany
-  storageClassName: azurefile-csi-nfs
+  storageClassName: azurefile-csi-smb
   resources:
     requests:
       storage: 5Gi
