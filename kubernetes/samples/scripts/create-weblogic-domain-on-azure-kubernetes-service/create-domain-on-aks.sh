@@ -430,9 +430,6 @@ provisioner: file.csi.azure.com
 allowVolumeExpansion: true
 parameters:
   protocol: smb
-  resourceGroup: ${azureResourceGroupName}
-  storageAccount: ${storageAccountName}
-  shareName: ${azureStorageShareName}
 mountOptions:
  - dir_mode=0777
  - file_mode=0777
@@ -441,8 +438,6 @@ mountOptions:
  - mfsymlinks
  - nobrl
  - cache=none
-parameters:
-  skuName: Premium_LRS
 
 EOF
 
