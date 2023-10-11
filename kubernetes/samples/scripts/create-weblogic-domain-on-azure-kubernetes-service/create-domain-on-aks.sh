@@ -452,7 +452,7 @@ spec:
   storageClassName: azurefile-csi-smb
   resources:
     requests:
-      storage: 5Gi
+      storage: 100Gi
 
 EOF
 
