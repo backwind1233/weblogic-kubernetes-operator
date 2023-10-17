@@ -426,29 +426,19 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: azurefile-csi-smb
-spec:
-  capacity:
-    storage: 100Gi
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: azurefile-csi
-  csi:
-    driver: file.csi.azure.com
-    readOnly: false
-    volumeAttributes:
-      protocol: smb
-    nodeStageSecretRef:
-      namespace: default
-  mountOptions:
-    - dir_mode=0777
-    - file_mode=0777
-    - uid=1000
-    - gid=1000
-    - mfsymlinks
-    - cache=strict
-    - nosharesock
-    - nobrl
+provisioner: file.csi.azure.com
+allowVolumeExpansion: true
+parameters:
+  protocol: smb
+mountOptions:
+ - dir_mode=0777
+ - file_mode=0777
+ - uid=0
+ - gid=0
+ - mfsymlinks
+ - nobrl
+ - cache=none
+
 EOF
 
 cat >pvc.yaml <<EOF
