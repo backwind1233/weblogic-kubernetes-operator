@@ -725,7 +725,8 @@ unzip ${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy.zip
 rm -f ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip
 cd ${image_build_base_dir}/sample/wdt-artifacts/archives/archive-v1
 
-${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.sh add application -archive_file=${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip -source=wlsdeploy/applications/myapp-v1
+# Zip wls model and applications
+zip ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip wlsdeploy
 
 cd ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1
 ${image_build_base_dir}/sample/wdt-artifacts/imagetool/bin/imagetool.sh createAuxImage \
