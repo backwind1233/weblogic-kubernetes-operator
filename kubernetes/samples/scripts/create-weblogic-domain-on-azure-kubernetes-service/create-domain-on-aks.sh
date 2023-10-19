@@ -730,12 +730,15 @@ ${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.s
     -archive_file=${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip \
     -source=wlsdeploy/applications/myapp-v1
 
-touch a.jar
+export wlsPostgresqlDriverUrl="https://jdbc.postgresql.org/download/postgresql-42.5.1.jar"
+export constPostgreDriverName="postgresql-42.5.1.jar"
+curl  -fL ${wlsPostgresqlDriverUrl} \
+      -o ${constPostgreDriverName}
 
 ${image_build_base_dir}/sample/wdt-artifacts/weblogic-deploy/bin/archiveHelper.sh \
     add classpathLibrary \
     -archive_file=${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1/archive.zip \
-    -source=a.jar
+    -source=${constPostgreDriverName}
 
 
 cd ${image_build_base_dir}/sample/wdt-artifacts/wdt-model-files/WLS-v1
