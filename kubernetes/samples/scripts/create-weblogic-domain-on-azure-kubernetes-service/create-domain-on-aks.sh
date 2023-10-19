@@ -425,25 +425,32 @@ createWebLogicDomain() {
 generateYamls() {
   
 echo "generating yamls..."
-cat >azure-csi-custom.yaml <<EOF
-# Copyright (c) 2018, 2021, Oracle and/or its affiliates.
-# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: azurefile-csi-custom
-provisioner: file.csi.azure.com
-parameters:
-  protocol: nfs
-  resourceGroup: ${azureResourceGroupName}
-  storageAccount: ${storageAccountName}
-  shareName: ${azureStorageShareName}
-reclaimPolicy: Delete
-volumeBindingMode: Immediate
-allowVolumeExpansion: true
+if [ -z "$azure_csi_custom_url" ]; then
+    cat >azure-csi-custom.yaml <<EOF
+    # Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+    # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
-EOF
+    apiVersion: storage.k8s.io/v1
+    kind: StorageClass
+    metadata:
+      name: azurefile-csi-custom
+    provisioner: file.csi.azure.com
+    parameters:
+      protocol: nfs
+      resourceGroup: ${azureResourceGroupName}
+      storageAccount: ${storageAccountName}
+      shareName: ${azureStorageShareName}
+    reclaimPolicy: Delete
+    volumeBindingMode: Immediate
+    allowVolumeExpansion: true
+
+    EOF
+else
+    echo "Getting azure-csi-custom.yaml from url"
+    curl -o azure-csi-custom.yaml "$azure_csi_custom_url"
+fi
+
 
 cat >pvc.yaml <<EOF
 apiVersion: v1
