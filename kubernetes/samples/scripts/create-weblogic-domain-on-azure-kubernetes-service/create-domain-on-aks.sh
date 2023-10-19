@@ -413,7 +413,7 @@ createWebLogicDomain() {
 
   # Mount the file share as a volume
   echo "Mounting file share as a volume..."
-  ${kubernetesCli} apply -f ./azure-csi-nfs.yaml
+  ${kubernetesCli} apply -f ./azure-csi-custom.yaml
   ${kubernetesCli} apply -f ./pvc.yaml
 
   ${kubernetesCli} apply -f domain-resource.yaml
@@ -425,14 +425,14 @@ createWebLogicDomain() {
 generateYamls() {
   
 echo "generating yamls..."
-cat >azure-csi-nfs.yaml <<EOF
+cat >azure-csi-custom.yaml <<EOF
 # Copyright (c) 2018, 2021, Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: azurefile-csi-nfs
+  name: azurefile-csi-custom
 provisioner: file.csi.azure.com
 parameters:
   protocol: nfs
@@ -453,7 +453,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteMany
-  storageClassName: azurefile-csi-nfs
+  storageClassName: azurefile-csi-custom
   resources:
     requests:
       storage: 5Gi
