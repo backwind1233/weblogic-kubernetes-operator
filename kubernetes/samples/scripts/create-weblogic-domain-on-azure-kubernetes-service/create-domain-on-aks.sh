@@ -571,6 +571,8 @@ spec:
       value: "-Dweblogic.StdoutDebugEnabled=false"
     - name: USER_MEM_ARGS
       value: "-Djava.security.egd=file:/dev/./urandom -Xms256m -Xmx512m "
+    - name: CLASSPATH
+      value: "/shared/domains/${domainUID}/wlsdeploy/classpathLibraries/*"
     resources:
       requests:
         cpu: "250m"
