@@ -501,7 +501,7 @@ spec:
   # images from OCR or create your images using the WebLogic Image Tool.
   # Please refer to the "OCR" and "WebLogic Images" pages in the WebLogic Kubernetes Operator
   # documentation for details.
-  image: "container-registry.oracle.com/middleware/weblogic:14.1.1.0"
+  image: "container-registry.oracle.com/middleware/weblogic_cpu:12.2.1.4-generic-jdk8-ol7-231013"
 
   # Defaults to "Always" if image tag (version) is ':latest'
   imagePullPolicy: IfNotPresent
